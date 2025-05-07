@@ -1,76 +1,47 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import Header from '../components/Header';
-import Sidebar from '../components/Sidebar';
-import ResizeHandle from '../components/ResizeHandle';
-import GraphView from '../components/GraphView';
-import { useDummyGraph } from '../hooks/useDummyGraph';
-import { useResize } from '../hooks/useResize';
-import { useGraphFilter } from '../hooks/useGraphFilter';
-import type { NodeData, LinkData } from '../types/graph';
+import GraphControls from '../components/GraphControls';
+import { useGraphPersistence } from '../hooks/useGraphPersistence';
+
+const ForceGraph3D = dynamic(() => import('react-force-graph-3d'), { ssr: false });
 
 export default function Page() {
-  // Sidebar resizing
-  const [sidebarWidth, setSidebarWidth] = useState(300);
-  const [isResizing, setIsResizing]   = useState(false);
-  useResize(isResizing, setSidebarWidth);
-
-  // Dummy graph data
-  const { graphData, fields } = useDummyGraph();
-
-  // Initialize toggles when fields load
-  const [selectedFields, setSelectedFields] = useState<string[]>([]);
-  useEffect(() => {
-    setSelectedFields(fields);
-  }, [fields]);
-
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // Filtered graph
-  const filteredData = useGraphFilter(
-    graphData,
-    searchTerm,
-    selectedFields
-  );
-
-  // Handlers
-  const handleAddNode = (node: NodeData) => {
-    // Add node
-    setGraphData(g => ({ nodes: [...g.nodes, node], links: g.links }));
-    // Ensure its field is toggled on
-    if (!selectedFields.includes(node.field)) {
-      setSelectedFields(s => [...s, node.field]);
-    }
-  };
-  const handleAddEdge = (edge: LinkData) => {
-    setGraphData(g => ({ nodes: g.nodes, links: [...g.links, edge] }));
-  };
-  const toggleField = (f: string) => {
-    setSelectedFields(s =>
-      s.includes(f) ? s.filter(x => x !== f) : [...s, f]
-    );
-  };
+  // Pull in graph state + handlers
+  const { graphData, addNode, exportGraph, importGraph } = useGraphPersistence();
 
   return (
     <div className="flex flex-col h-screen">
       <Header />
+
       <div className="flex flex-1">
-        <Sidebar
-          width={sidebarWidth}
-          fields={fields}
-          selectedFields={selectedFields}
-          onToggleField={toggleField}
-          searchTerm={searchTerm}
-          onSearch={setSearchTerm}
-          onAddNode={handleAddNode}
-          onAddEdge={handleAddEdge}
+        {/* Controls panel */}
+        <GraphControls
+          addNode={() => {
+            const title = prompt('Node title:') ?? '';
+            if (!title) return;
+            const field = prompt('Field/category:') ?? '';
+            addNode(title, field);
+          }}
+          exportGraph={exportGraph}
+          importGraph={importGraph}
         />
-        <ResizeHandle onMouseDown={() => setIsResizing(true)} />
+
+        {/* Graph canvas */}
         <main className="flex-1 relative">
-          <GraphView
-            data={filteredData}
-            onNodeClick={() => {/* no-op for now */}}
+          <ForceGraph3D
+            graphData={graphData}
+            nodeAutoColorBy="field"
+            linkOpacity={0.6}
+            nodeLabel={(n: any) => `${n.title} — ${n.field}`}
+            linkDirectionalParticles={2}
+            style={{
+              position: 'absolute',
+              top: 0, left: 0,
+              width: '100%', height: '100%',
+              zIndex: 0
+            }}
           />
         </main>
       </div>
