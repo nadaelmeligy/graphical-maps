@@ -27,6 +27,28 @@ export function useGraphPersistence() {
     }
   }
 
+  // Update a node
+  function updateNode(nodeId: number, updates: Partial<NodeData>) {
+    setGraphData(g => ({
+      nodes: g.nodes.map(node => 
+        node.id === nodeId ? { ...node, ...updates } : node
+      ),
+      links: g.links
+    }));
+  }
+
+  // Remove a node
+  function removeNode(nodeId: number) {
+    setGraphData(g => ({
+      nodes: g.nodes.filter(node => node.id !== nodeId),
+      links: g.links.filter(link => {
+        const sourceId = typeof link.source === 'number' ? link.source : (link.source as any).id;
+        const targetId = typeof link.target === 'number' ? link.target : (link.target as any).id;
+        return sourceId !== nodeId && targetId !== nodeId;
+      })
+    }));
+  }
+
   // Export as JSON file
   function exportGraph() {
     const blob = new Blob([JSON.stringify(graphData, null, 2)], { type: 'application/json' });
@@ -52,5 +74,13 @@ export function useGraphPersistence() {
     reader.readAsText(file);
   }
 
-  return { graphData, addNode, addLink, exportGraph, importGraph };
+  return { 
+    graphData, 
+    addNode, 
+    addLink, 
+    updateNode, 
+    removeNode, 
+    exportGraph, 
+    importGraph 
+  };
 }

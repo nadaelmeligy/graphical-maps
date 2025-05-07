@@ -1,9 +1,11 @@
 'use client';
 import dynamic from 'next/dynamic';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import type { NodeData } from '../types/graph';
+import { useGraphInteractions } from '../hooks/useGraphInteractions';
 import ContextMenu from './ContextMenu';
 import NodePropertiesModal from './NodePropertiesModal';
+import NodeEditModal from './NodeEditModal';
 
 const ForceGraph3D = dynamic(() => import('react-force-graph-3d'), { ssr: false });
 
@@ -11,9 +13,17 @@ interface GraphVisualizationProps {
   graphData: any;
   addNode: (title: string, field: string, properties: Record<string, string>) => void;
   addLink: (source: number, target: number) => void;
+  updateNode: (nodeId: number, updates: Partial<NodeData>) => void;
+  removeNode: (nodeId: number) => void;
 }
 
-export default function GraphVisualization({ graphData, addNode, addLink }: GraphVisualizationProps) {
+export default function GraphVisualization({ 
+  graphData, 
+  addNode, 
+  addLink, 
+  updateNode, 
+  removeNode 
+}: GraphVisualizationProps) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -21,14 +31,23 @@ export default function GraphVisualization({ graphData, addNode, addLink }: Grap
     nodeId?: number;
   } | null>(null);
   const [showNodeModal, setShowNodeModal] = useState(false);
-  const [dragLine, setDragLine] = useState<{ source: number; x: number; y: number; z: number } | null>(null);
-  const graphRef = useRef<any>();
-  const [isSimulationRunning, setSimulationRunning] = useState(true);
-  const [edgeCreationSource, setEdgeCreationSource] = useState<number | null>(null);
+  const [editingNode, setEditingNode] = useState<NodeData | null>(null);
+
+  const {
+    graphRef,
+    dragLine,
+    edgeCreationSource,
+    setEdgeCreationSource,
+    handleNodeDragStart,
+    handleBackgroundDrag,
+    handleNodeDrop,
+    configureD3Force,
+    handleEngineStop,
+    dimensions
+  } = useGraphInteractions(addLink);
 
   const handleNodeClick = (node: NodeData, event: MouseEvent) => {
     if (edgeCreationSource !== null) {
-      // Complete edge creation
       if (edgeCreationSource !== node.id) {
         addLink(edgeCreationSource, node.id);
       }
@@ -44,38 +63,25 @@ export default function GraphVisualization({ graphData, addNode, addLink }: Grap
     });
   };
 
-  const handleNodeDragStart = (node: NodeData, event: MouseEvent) => {
-    setDragLine({ source: node.id, x: event.clientX, y: event.clientY, z: 0 });
-  };
-
-  const handleBackgroundDrag = (event: MouseEvent) => {
-    if (dragLine && graphRef.current) {
-      const { x, y } = graphRef.current.screen2GraphCoords(event.clientX, event.clientY);
-      setDragLine(prev => prev ? { ...prev, x, y, z: 0 } : null);
-    }
-  };
-
-  const handleNodeDrop = (node: NodeData) => {
-    if (dragLine && node.id !== dragLine.source) {
-      addLink(dragLine.source, node.id);
-      // Briefly reheat simulation when adding edge
-      if (graphRef.current) {
-        graphRef.current.d3ReheatSimulation();
-        setTimeout(() => graphRef.current?.d3Force('center')?.strength(0), 1000);
-      }
-    }
-    setDragLine(null);
-  };
-
   const startEdgeCreation = (nodeId: number) => {
     setEdgeCreationSource(nodeId);
     setContextMenu(null);
   };
 
+  const handleRemoveNode = (nodeId: number) => {
+    try {
+      removeNode(nodeId);
+    } catch (error) {
+      console.error('Error removing node:', error);
+    }
+  };
+
   return (
-    <>
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <ForceGraph3D
         ref={graphRef}
+        width={dimensions.width}
+        height={dimensions.height}
         graphData={{
           nodes: graphData.nodes,
           links: [...graphData.links, 
@@ -85,8 +91,8 @@ export default function GraphVisualization({ graphData, addNode, addLink }: Grap
             }] : []),
             ...(edgeCreationSource !== null ? [{
               source: edgeCreationSource,
-              target: { x: 0, y: 0, z: 0 }, // Will be updated by mouse position
-              __temp: true // Mark as temporary
+              target: { x: 0, y: 0, z: 0 },
+              __temp: true
             }] : [])
           ]
         }}
@@ -103,26 +109,12 @@ export default function GraphVisualization({ graphData, addNode, addLink }: Grap
         enableNodeDrag={true}
         forceEngine="d3"
         cooldownTicks={50}
-        d3Force={(d3) => {
-          d3.force('charge')?.strength(-50);
-          d3.force('link')?.distance(100);
-          d3.force('center')?.strength(isSimulationRunning ? 0.05 : 0);
-          d3.force('collision')?.radius(20);
-        }}
-        onEngineStop={() => {
-          if (graphRef.current) {
-            graphRef.current.d3Force('charge', null);
-            graphRef.current.d3Force('center', null);
-            graphRef.current.d3Force('collision', null);
-          }
-          setSimulationRunning(false);
-        }}
+        d3Force={configureD3Force}
+        onEngineStop={handleEngineStop}
         style={{
           position: 'absolute',
           top: 0,
           left: 0,
-          width: '100%',
-          height: '100%',
           zIndex: 0
         }}
       />
@@ -133,9 +125,27 @@ export default function GraphVisualization({ graphData, addNode, addLink }: Grap
           y={contextMenu.y}
           onClose={() => setContextMenu(null)}
           options={contextMenu.type === 'node' ? [
-            { label: 'Edit Node', action: () => {/* TODO */} },
-            { label: 'Remove Node', action: () => {/* TODO */} },
-            { label: 'Create Edge from Here', action: () => startEdgeCreation(contextMenu.nodeId!) }
+            { 
+              label: 'Edit Node', 
+              action: () => {
+                const node = graphData.nodes.find(n => n.id === contextMenu.nodeId);
+                if (node) setEditingNode(node);
+                setContextMenu(null);
+              }
+            },
+            { 
+              label: 'Remove Node', 
+              action: () => {
+                if (contextMenu.nodeId !== undefined) {
+                  handleRemoveNode(contextMenu.nodeId);
+                  setContextMenu(null);
+                }
+              }
+            },
+            { 
+              label: 'Create Edge from Here', 
+              action: () => startEdgeCreation(contextMenu.nodeId!)
+            }
           ] : []}
         />
       )}
@@ -146,8 +156,20 @@ export default function GraphVisualization({ graphData, addNode, addLink }: Grap
         </div>
       )}
 
+      {editingNode && (
+        <NodeEditModal
+          node={editingNode}
+          onClose={() => setEditingNode(null)}
+          onSave={(updates) => {
+            updateNode(editingNode.id, updates);
+            setEditingNode(null);
+          }}
+        />
+      )}
+
       {showNodeModal && (
         <NodePropertiesModal
+          existingNodes={graphData.nodes}
           onClose={() => setShowNodeModal(false)}
           onSave={({ title, field, properties }) => {
             addNode(title, field, properties);
@@ -155,6 +177,6 @@ export default function GraphVisualization({ graphData, addNode, addLink }: Grap
           }}
         />
       )}
-    </>
+    </div>
   );
 }

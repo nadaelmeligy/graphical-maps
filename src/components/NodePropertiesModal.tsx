@@ -1,119 +1,136 @@
 'use client';
-import { FC, useState } from 'react';
+import { useState, useMemo } from 'react';
+import type { NodeData } from '../types/graph';
+import { getUniqueValues, getUniquePropertyKeys } from '../utils/propertyOptions';
 
 interface NodePropertiesModalProps {
-  onSave: (data: { title: string; field: string; properties: Record<string, string> }) => void;
+  existingNodes: NodeData[];
   onClose: () => void;
+  onSave: (data: { title: string; field: string; properties: Record<string, string> }) => void;
 }
 
-const NodePropertiesModal: FC<NodePropertiesModalProps> = ({ onSave, onClose }) => {
+export default function NodePropertiesModal({ existingNodes, onClose, onSave }: NodePropertiesModalProps) {
   const [title, setTitle] = useState('');
   const [field, setField] = useState('');
   const [properties, setProperties] = useState<Record<string, string>>({});
-  const [newPropKey, setNewPropKey] = useState('');
+  const [newKey, setNewKey] = useState('');
+  const [newValue, setNewValue] = useState('');
+
+  // Get unique values for fields and properties
+  const uniqueFields = useMemo(() => getUniqueValues(existingNodes, 'field'), [existingNodes]);
+  const existingPropertyKeys = useMemo(() => getUniquePropertyKeys(existingNodes), [existingNodes]);
+
+  const getPropertyValues = (propertyKey: string) => 
+    getUniqueValues(existingNodes, propertyKey);
 
   const handleAddProperty = () => {
-    if (newPropKey && !properties[newPropKey]) {
-      setProperties({ ...properties, [newPropKey]: '' });
-      setNewPropKey('');
+    if (newKey && newValue) {
+      setProperties(prev => ({ ...prev, [newKey]: newValue }));
+      setNewKey('');
+      setNewValue('');
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave({ title, field, properties });
-  };
-
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
-      <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative w-80 backdrop-blur-lg bg-transparent border border-white/10 rounded-lg p-4 shadow-2xl">
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+      <div className="bg-white p-6 rounded-lg w-96">
+        <h2 className="text-xl mb-4">Add New Node</h2>
+        
+        <div className="space-y-4">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Node Title"
+            className="w-full border px-2 py-1 rounded"
+          />
+
+          <div className="flex gap-2">
             <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Title"
-              className="w-full p-1.5 bg-white/10 border-0 rounded-md 
-                       backdrop-blur-sm text-white placeholder-white/70
-                       focus:ring-1 focus:ring-white/30 focus:outline-none"
-              required
-            />
-          </div>
-          <div>
-            <input
-              type="text"
               value={field}
               onChange={(e) => setField(e.target.value)}
               placeholder="Field"
-              className="w-full p-1.5 bg-white/10 border-0 rounded-md 
-                       backdrop-blur-sm text-white placeholder-white/70
-                       focus:ring-1 focus:ring-white/30 focus:outline-none"
-              required
+              className="w-1/2 border px-2 py-1 rounded"
+              list="field-options"
             />
+            <datalist id="field-options">
+              {uniqueFields.map(f => <option key={f} value={f} />)}
+            </datalist>
           </div>
 
-          <div className="space-y-2">
+          <div className="border-t pt-4">
+            <h3 className="font-medium mb-2">Custom Properties</h3>
             {Object.entries(properties).map(([key, value]) => (
-              <div key={key} className="flex gap-2">
+              <div key={key} className="flex gap-2 mb-2">
+                <input value={key} disabled className="border px-2 py-1 rounded w-1/2" />
                 <input
-                  type="text"
-                  value={key}
-                  disabled
-                  className="w-1/3 p-1.5 bg-white/5 border-0 rounded-md text-white/70"
-                />
-                <input
-                  type="text"
                   value={value}
-                  onChange={(e) => setProperties({ ...properties, [key]: e.target.value })}
-                  className="flex-1 p-1.5 bg-white/10 border-0 rounded-md 
-                           backdrop-blur-sm text-white placeholder-white/70
-                           focus:ring-1 focus:ring-white/30 focus:outline-none"
+                  onChange={(e) => setProperties(prev => ({
+                    ...prev,
+                    [key]: e.target.value
+                  }))}
+                  className="border px-2 py-1 rounded w-1/2"
+                  list={`values-${key}`}
                 />
+                <datalist id={`values-${key}`}>
+                  {getPropertyValues(key).map(v => <option key={v} value={v} />)}
+                </datalist>
               </div>
             ))}
+
             <div className="flex gap-2">
               <input
-                type="text"
-                value={newPropKey}
-                onChange={(e) => setNewPropKey(e.target.value)}
-                placeholder="New property"
-                className="flex-1 p-1.5 bg-white/10 border-0 rounded-md 
-                         backdrop-blur-sm text-white placeholder-white/70
-                         focus:ring-1 focus:ring-white/30 focus:outline-none"
+                value={newKey}
+                onChange={(e) => setNewKey(e.target.value)}
+                placeholder="Property name"
+                className="border px-2 py-1 rounded w-1/2"
+                list="property-keys"
               />
-              <button
-                type="button"
-                onClick={handleAddProperty}
-                className="px-2 py-1.5 bg-white/10 text-white rounded-md 
-                         hover:bg-white/20 backdrop-blur-sm transition-colors"
-              >
-                +
-              </button>
-            </div>
-          </div>
+              <datalist id="property-keys">
+                {existingPropertyKeys.map(key => <option key={key} value={key} />)}
+              </datalist>
 
-          <div className="flex justify-end gap-2 pt-2">
+              <input
+                value={newValue}
+                onChange={(e) => setNewValue(e.target.value)}
+                placeholder="Value"
+                className="border px-2 py-1 rounded w-1/2"
+                list={newKey ? `values-new-${newKey}` : undefined}
+              />
+              {newKey && (
+                <datalist id={`values-new-${newKey}`}>
+                  {getPropertyValues(newKey).map(v => <option key={v} value={v} />)}
+                </datalist>
+              )}
+            </div>
             <button
-              type="button"
-              onClick={onClose}
-              className="px-3 py-1 text-white/70 hover:text-white transition-colors"
+              onClick={handleAddProperty}
+              className="mt-2 bg-blue-500 text-white px-3 py-1 rounded text-sm"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-3 py-1 bg-white/10 text-white rounded-md 
-                       hover:bg-white/20 backdrop-blur-sm transition-colors"
-            >
-              Add
+              Add Property
             </button>
           </div>
-        </form>
+        </div>
+
+        <div className="flex justify-end gap-2 mt-6">
+          <button
+            onClick={onClose}
+            className="px-4 py-1 border rounded"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              if (title && field) {
+                onSave({ title, field, properties });
+              }
+            }}
+            disabled={!title || !field}
+            className="bg-blue-500 text-white px-4 py-1 rounded disabled:opacity-50"
+          >
+            Create Node
+          </button>
+        </div>
       </div>
     </div>
   );
-};
-
-export default NodePropertiesModal;
+}
