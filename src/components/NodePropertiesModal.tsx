@@ -24,11 +24,19 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
     getUniqueValues(existingNodes, propertyKey);
 
   const handleAddProperty = () => {
-    if (newKey && newValue) {
-      setProperties(prev => ({ ...prev, [newKey]: newValue }));
-      setNewKey('');
-      setNewValue('');
+    if (!newKey || !newValue) {
+      alert('Please select a property and enter a value');
+      return;
     }
+    
+    setProperties(prev => ({ ...prev, [newKey]: newValue }));
+    setNewKey('');
+    setNewValue('');
+  };
+
+  const removeProperty = (key: string) => {
+    const { [key]: _, ...rest } = properties;
+    setProperties(rest);
   };
 
   return (
@@ -71,6 +79,12 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
                   className="border px-2 py-1 rounded w-1/2"
                   list={`values-${key}`}
                 />
+                <button
+                  onClick={() => removeProperty(key)}
+                  className="text-red-500 px-2"
+                >
+                  ×
+                </button>
                 <datalist id={`values-${key}`}>
                   {getPropertyValues(key).map(v => <option key={v} value={v} />)}
                 </datalist>
@@ -78,33 +92,41 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
             ))}
 
             <div className="flex gap-2">
-              <input
+              <select
                 value={newKey}
                 onChange={(e) => setNewKey(e.target.value)}
-                placeholder="Property name"
                 className="border px-2 py-1 rounded w-1/2"
-                list="property-keys"
-              />
-              <datalist id="property-keys">
-                {existingPropertyKeys.map(key => <option key={key} value={key} />)}
-              </datalist>
+              >
+                <option value="">Select property</option>
+                {existingPropertyKeys
+                  .filter(key => !Object.keys(properties).includes(key))
+                  .map(key => (
+                    <option key={key} value={key}>{key}</option>
+                  ))}
+                <option value="__new__">Add new property...</option>
+              </select>
 
-              <input
-                value={newValue}
-                onChange={(e) => setNewValue(e.target.value)}
-                placeholder="Value"
-                className="border px-2 py-1 rounded w-1/2"
-                list={newKey ? `values-new-${newKey}` : undefined}
-              />
-              {newKey && (
-                <datalist id={`values-new-${newKey}`}>
-                  {getPropertyValues(newKey).map(v => <option key={v} value={v} />)}
-                </datalist>
+              {newKey === '__new__' ? (
+                <input
+                  value={newKey}
+                  onChange={(e) => setNewKey(e.target.value)}
+                  placeholder="New property name"
+                  className="border px-2 py-1 rounded w-1/2"
+                />
+              ) : (
+                <input
+                  value={newValue}
+                  onChange={(e) => setNewValue(e.target.value)}
+                  placeholder="Value"
+                  className="border px-2 py-1 rounded w-1/2"
+                  list={newKey ? `values-new-${newKey}` : undefined}
+                />
               )}
             </div>
             <button
               onClick={handleAddProperty}
-              className="mt-2 bg-blue-500 text-white px-3 py-1 rounded text-sm"
+              disabled={!newKey || !newValue || newKey === '__new__'}
+              className="mt-2 bg-blue-500 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
             >
               Add Property
             </button>

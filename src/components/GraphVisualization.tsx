@@ -159,6 +159,7 @@ export default function GraphVisualization({
       {editingNode && (
         <NodeEditModal
           node={editingNode}
+          existingNodes={graphData.nodes}
           onClose={() => setEditingNode(null)}
           onSave={(updates) => {
             updateNode(editingNode.id, updates);
