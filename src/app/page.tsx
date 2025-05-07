@@ -1,50 +1,34 @@
 'use client';
-
-import dynamic from 'next/dynamic';
-import Header from '../components/Header';
-import GraphControls from '../components/GraphControls';
 import { useGraphPersistence } from '../hooks/useGraphPersistence';
+import Header from '../components/Header';
+import TopBar from '../components/TopBar';
+import GraphVisualization from '../components/GraphVisualization';
 
-const ForceGraph3D = dynamic(() => import('react-force-graph-3d'), { ssr: false });
-
+/**
+ * Main page component that orchestrates the graph visualization application
+ * Handles the overall layout and data management while delegating specific
+ * functionality to specialized components
+ */
 export default function Page() {
-  // Pull in graph state + handlers
-  const { graphData, addNode, exportGraph, importGraph } = useGraphPersistence();
+  // Hook for managing graph data persistence and operations
+  const { graphData, addNode, addLink, exportGraph, importGraph } = useGraphPersistence();
 
   return (
     <div className="flex flex-col h-screen">
+      {/* Application header with title and main navigation */}
       <Header />
 
-      <div className="flex flex-1">
-        {/* Controls panel */}
-        <GraphControls
-          addNode={() => {
-            const title = prompt('Node title:') ?? '';
-            if (!title) return;
-            const field = prompt('Field/category:') ?? '';
-            addNode(title, field);
-          }}
-          exportGraph={exportGraph}
-          importGraph={importGraph}
-        />
+      {/* Controls for graph import/export operations */}
+      <TopBar exportGraph={exportGraph} importGraph={importGraph} />
 
-        {/* Graph canvas */}
-        <main className="flex-1 relative">
-          <ForceGraph3D
-            graphData={graphData}
-            nodeAutoColorBy="field"
-            linkOpacity={0.6}
-            nodeLabel={(n: any) => `${n.title} — ${n.field}`}
-            linkDirectionalParticles={2}
-            style={{
-              position: 'absolute',
-              top: 0, left: 0,
-              width: '100%', height: '100%',
-              zIndex: 0
-            }}
-          />
-        </main>
-      </div>
+      {/* Main content area with graph visualization */}
+      <main className="flex-1 relative">
+        <GraphVisualization
+          graphData={graphData}
+          addNode={addNode}
+          addLink={addLink}
+        />
+      </main>
     </div>
   );
 }

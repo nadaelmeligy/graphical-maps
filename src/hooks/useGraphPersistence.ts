@@ -5,12 +5,26 @@ export function useGraphPersistence() {
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
 
   // Add a single node
-  function addNode(title: string, field: string) {
+  function addNode(title: string, field: string, properties: Record<string, string> = {}) {
     const nextId = graphData.nodes.length
       ? Math.max(...graphData.nodes.map(n => n.id)) + 1
       : 0;
-    const node: NodeData = { id: nextId, title, field };
+    const node: NodeData = { id: nextId, title, field, properties };
     setGraphData(g => ({ nodes: [...g.nodes, node], links: g.links }));
+  }
+
+  // Add a link between nodes
+  function addLink(sourceId: number, targetId: number) {
+    if (sourceId === targetId) return; // Prevent self-loops
+    const linkExists = graphData.links.some(
+      link => link.source === sourceId && link.target === targetId
+    );
+    if (!linkExists) {
+      setGraphData(g => ({
+        nodes: g.nodes,
+        links: [...g.links, { source: sourceId, target: targetId }]
+      }));
+    }
   }
 
   // Export as JSON file
@@ -38,5 +52,5 @@ export function useGraphPersistence() {
     reader.readAsText(file);
   }
 
-  return { graphData, addNode, exportGraph, importGraph };
+  return { graphData, addNode, addLink, exportGraph, importGraph };
 }
