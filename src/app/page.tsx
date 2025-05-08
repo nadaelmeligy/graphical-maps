@@ -4,7 +4,8 @@ import { useGraphPersistence } from '../hooks/useGraphPersistence';
 import Header from '../components/layout/Header';
 import TopBar from '../components/toolbar/TopBar';
 import GraphVisualization from '../components/GraphVisualization';
-import { exportGraphImage } from '../utils/graphExport';
+import ImagePreviewModal from '../components/modals/ImagePreviewModal';
+import { exportGraphImage, createGraphPreview, downloadGraphImage } from '../utils/graphExport';
 
 /**
  * Main page component that orchestrates the graph visualization application
@@ -18,6 +19,7 @@ export default function Page() {
   const [isTopBarVisible, setIsTopBarVisible] = useState(true);
   const [colorProperty, setColorProperty] = useState('field');
   const [graphRef, setGraphRef] = useState<{ current: any; isReady: boolean } | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const handleExportImage = async () => {
     if (!graphRef?.current || !graphRef.isReady) {
@@ -26,10 +28,21 @@ export default function Page() {
     }
 
     try {
-      await exportGraphImage(graphRef);
+      // Force a full render cycle
+      graphRef.current.renderer().render(graphRef.current.scene(), graphRef.current.camera());
+      
+      // Wait for next frame to ensure render is complete
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      
+      const previewUrl = createGraphPreview(graphRef, true, processedData);
+      if (!previewUrl) {
+        throw new Error('Failed to generate preview URL');
+      }
+      
+      setPreviewUrl(previewUrl);
     } catch (error) {
-      console.error('Failed to export image:', error);
-      alert('Failed to export image. Please try again.');
+      console.error('Export error details:', error);
+      alert(`Failed to create image preview: ${error.message}`);
     }
   };
 
@@ -73,7 +86,11 @@ export default function Page() {
         __colorKey: colorProperty === 'field' 
           ? node.field
           : node.properties[colorProperty] || 'undefined',
-        __edgeCount: edgeCount
+        __edgeCount: edgeCount,
+        // Add label property that will be used in visualization
+        label: node.title,
+        labelColor: '#000000',
+        labelProperty: { size: 12 }
       };
     }),
     links: graphData.links.filter(link => 
@@ -119,6 +136,18 @@ export default function Page() {
           />
         </main>
       </div>
+
+      {previewUrl && (
+        <ImagePreviewModal
+          imageUrl={previewUrl}
+          onClose={() => setPreviewUrl(null)}
+          onConfirm={(includeLabels) => {
+            const imageUrl = createGraphPreview(graphRef, includeLabels, processedData);
+            downloadGraphImage(imageUrl);
+            setPreviewUrl(null);
+          }}
+        />
+      )}
     </div>
   );
 }
