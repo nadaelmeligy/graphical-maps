@@ -5,6 +5,7 @@ import SearchBar from './SearchBar';
 import { ExportTools } from './ExportTools';
 import { FilterTools } from './FilterTools';
 import { ColorTools } from './ColorTools';
+import { SearchTools } from './SearchTools';
 
 interface TopBarProps {
   exportGraph: () => void;
@@ -32,7 +33,7 @@ const TopBar: FC<TopBarProps> = ({
   return (
     <div className={`
       flex items-center gap-4 bg-gray-700 border-b border-gray-600 text-white px-4
-      transition-all duration-300 ease-in-out
+      transition-all duration-300 ease-in-out relative z-[9999]
       ${isVisible ? 'h-16 opacity-100 visible' : 'h-0 opacity-0 invisible'}
     `}>
       <ExportTools 
@@ -49,7 +50,7 @@ const TopBar: FC<TopBarProps> = ({
         colorProperty={colorProperty}
         onColorPropertyChange={onColorPropertyChange}
       />
-      <SearchBar nodes={nodes} onSelect={onSearchSelect} />
+      <SearchTools nodes={nodes} onSelect={onSearchSelect} />
     </div>
   );
 };

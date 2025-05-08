@@ -37,8 +37,12 @@ export default function Page() {
     if (graphRef?.current) {
       const node = graphData.nodes.find(n => n.id === nodeId);
       if (node) {
-        graphRef.current.centerAt(node.x, node.y, node.z, 1000);
-        graphRef.current.zoom(1.5, 1000);
+        // Focus on the selected node with animation
+        graphRef.current.cameraPosition(
+          { x: node.x + 100, y: node.y + 100, z: node.z + 100 }, // new position
+          { x: node.x, y: node.y, z: node.z }, // lookAt position
+          2000 // transition duration in ms
+        );
       }
     }
   };
