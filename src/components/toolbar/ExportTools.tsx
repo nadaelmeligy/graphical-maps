@@ -10,11 +10,13 @@ export function ExportTools({ onExportImage, onExportData, onImportData }: Expor
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExportImage = async () => {
+    if (isExporting) return;
     setIsExporting(true);
     try {
       await onExportImage();
     } catch (error) {
       console.error('Failed to export:', error);
+      alert('Failed to export image. Please try again.');
     } finally {
       setIsExporting(false);
     }

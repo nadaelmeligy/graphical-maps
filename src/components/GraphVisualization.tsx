@@ -22,7 +22,7 @@ interface GraphVisualizationProps {
   addLink: (source: number, target: number) => void;
   updateNode: (nodeId: number, updates: Partial<NodeData>) => void;
   removeNode: (nodeId: number) => void;
-  onGraphRefUpdate: (ref: { current: any } | null) => void;
+  onGraphRefUpdate: (ref: { current: any; isReady: boolean } | null) => void;
 }
 
 export default function GraphVisualization({ 
@@ -44,6 +44,7 @@ export default function GraphVisualization({
   const [editingNode, setEditingNode] = useState<NodeData | null>(null);
   const [hoveredNode, setHoveredNode] = useState<{ node: NodeData; x: number; y: number } | null>(null);
   const [colorMap, setColorMap] = useState(new Map<string, string>());
+  const [isGraphReady, setIsGraphReady] = useState(false);
 
   const {
     graphRef,
@@ -54,21 +55,28 @@ export default function GraphVisualization({
     handleBackgroundDrag,
     handleNodeDrop,
     configureD3Force,
-    handleEngineStop,
+    handleEngineStop: originalHandleEngineStop,
     dimensions
   } = useGraphInteractions(addLink);
+
+  const handleEngineStop = () => {
+    originalHandleEngineStop();
+    if (!isGraphReady) {
+      setIsGraphReady(true);
+    }
+  };
 
   // Update when the graph ref changes
   useEffect(() => {
     if (graphRef.current && onGraphRefUpdate) {
-      onGraphRefUpdate({ current: graphRef.current });
+      onGraphRefUpdate({ current: graphRef.current, isReady: isGraphReady });
     }
     return () => {
       if (onGraphRefUpdate) {
         onGraphRefUpdate(null);
       }
     };
-  }, [graphRef, onGraphRefUpdate]);
+  }, [graphRef, onGraphRefUpdate, isGraphReady]);
 
   const handleNodeClick = (node: NodeData, event: MouseEvent) => {
     if (edgeCreationSource !== null) {
