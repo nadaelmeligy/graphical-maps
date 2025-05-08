@@ -1,7 +1,7 @@
 'use client';
 import { FC, useState, useMemo } from 'react';
 import type { NodeData } from '../types/graph';
-import AboutModal from './AboutModal';
+import SearchBar from './toolbar/SearchBar';
 
 interface TopBarProps {
   exportGraph: () => void;
@@ -11,6 +11,8 @@ interface TopBarProps {
   onColorPropertyChange: (property: string) => void;
   colorProperty: string;
   isVisible: boolean;
+  onExportImage: () => void;
+  onSearchSelect: (nodeId: number) => void;
 }
 
 const TopBar: FC<TopBarProps> = ({ 
@@ -20,11 +22,12 @@ const TopBar: FC<TopBarProps> = ({
   onFilterChange, 
   onColorPropertyChange,
   colorProperty,
-  isVisible 
+  isVisible,
+  onExportImage,
+  onSearchSelect
 }) => {
   const [selectedField, setSelectedField] = useState<string>('');
   const [selectedValue, setSelectedValue] = useState<string>('');
-  const [showAbout, setShowAbout] = useState(false);  // Add this line
 
   // Get all available fields including custom properties
   const fields = useMemo(() => {
@@ -46,25 +49,33 @@ const TopBar: FC<TopBarProps> = ({
       transition-all duration-300 ease-in-out
       ${isVisible ? 'h-16 opacity-100 visible' : 'h-0 opacity-0 invisible'}
     `}>
-      <button
-        onClick={exportGraph}
-        className="px-3 py-1 text-sm bg-yellow-500 text-white rounded hover:bg-blue-600 transition"
-      >
-        Export Graph
-      </button>
-      <label className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition cursor-pointer">
-        Import Graph
-        <input
-          type="file"
-          accept="application/json"
-          onChange={e => {
-            const file = e.target.files?.[0];
-            if (file) importGraph(file);
-          }}
-          className="hidden"
-        />
-      </label>
-      
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onExportImage}
+          className="px-3 py-1 text-sm bg-yellow-500 text-white rounded hover:bg-yellow-600 transition"
+        >
+          Export Image
+        </button>
+        <button
+          onClick={exportGraph}
+          className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition"
+        >
+          Export Data
+        </button>
+        <label className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition cursor-pointer">
+          Import Data
+          <input
+            type="file"
+            accept="application/json"
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) importGraph(file);
+            }}
+            className="hidden"
+          />
+        </label>
+      </div>
+
       <div className="flex items-center gap-2">
         <select 
           className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition cursor-pointer"
@@ -111,25 +122,15 @@ const TopBar: FC<TopBarProps> = ({
         >
           <option value="field">Color by Category</option>
           {fields
-            .filter(field => field !== 'field') // Filter out 'field' option
+            .filter(field => field !== 'field')
             .map(field => (
               <option key={field} value={field}>
                 Color by {field}
               </option>
           ))}
         </select>
+        <SearchBar nodes={nodes} onSelect={onSearchSelect} />
       </div>
-
-      <div className="ml-auto">
-        <button
-          onClick={() => setShowAbout(true)}
-          className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-500 transition"
-        >
-          About
-        </button>
-      </div>
-
-      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
     </div>
   );
 };

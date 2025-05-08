@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import type { NodeData } from '../types/graph';
-import { getUniqueValues, getUniquePropertyKeys } from '../utils/propertyOptions';
+import type { NodeData } from '../../types/graph';
+import { getUniqueValues, getUniquePropertyKeys } from '../../utils/propertyOptions';
 
 interface NodeEditModalProps {
   node: NodeData;

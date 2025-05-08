@@ -1,9 +1,10 @@
 'use client';
 import { useState } from 'react';
 import { useGraphPersistence } from '../hooks/useGraphPersistence';
-import Header from '../components/Header';
-import TopBar from '../components/TopBar';
+import Header from '../components/layout/Header';
+import TopBar from '../components/toolbar/TopBar';
 import GraphVisualization from '../components/GraphVisualization';
+import { saveAs } from 'file-saver';
 
 /**
  * Main page component that orchestrates the graph visualization application
@@ -16,6 +17,63 @@ export default function Page() {
   const [filter, setFilter] = useState<{ field: string; value: string } | null>(null);
   const [isTopBarVisible, setIsTopBarVisible] = useState(true);
   const [colorProperty, setColorProperty] = useState('field');
+  const [graphRef, setGraphRef] = useState<{ current: any } | null>(null);
+
+  const handleExportImage = async () => {
+    if (!graphRef?.current) {
+      console.warn('Graph is not yet ready. Please try again in a moment.');
+      return;
+    }
+
+    try {
+      const graph = graphRef.current;
+      
+      // Force a render frame
+      graph.renderer().render(graph.scene(), graph.camera());
+      
+      // Get the WebGL canvas
+      const glCanvas = graph.renderer().domElement;
+      
+      // Create a new canvas with white background
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) throw new Error('Failed to get 2D context');
+      
+      // Match dimensions
+      canvas.width = glCanvas.width;
+      canvas.height = glCanvas.height;
+      
+      // Draw white background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw the WebGL canvas on top
+      ctx.drawImage(glCanvas, 0, 0);
+      
+      // Convert to blob and download
+      canvas.toBlob(
+        (blob) => {
+          if (blob) saveAs(blob, 'graph-visualization.png');
+        },
+        'image/png',
+        1.0
+      );
+
+    } catch (error) {
+      console.error('Failed to export image:', error);
+    }
+  };
+
+  const handleSearchSelect = (nodeId: number) => {
+    if (graphRef?.current) {
+      const node = graphData.nodes.find(n => n.id === nodeId);
+      if (node) {
+        graphRef.current.centerAt(node.x, node.y, node.z, 1000);
+        graphRef.current.zoom(1.5, 1000);
+      }
+    }
+  };
 
   // First apply filters
   const filteredNodes = filter 
@@ -28,14 +86,24 @@ export default function Page() {
       })
     : graphData.nodes;
 
-  // Then process for coloring
+  // Then process for coloring and sizing
   const processedData = {
-    nodes: filteredNodes.map(node => ({
-      ...node,
-      __colorKey: colorProperty === 'field' 
-        ? node.field  // Use field value directly for category coloring
-        : node.properties[colorProperty] || 'undefined'  // Use property value directly
-    })),
+    nodes: filteredNodes.map(node => {
+      // Count connected edges for this node
+      const edgeCount = graphData.links.filter(link => {
+        const sourceId = typeof link.source === 'number' ? link.source : link.source.id;
+        const targetId = typeof link.target === 'number' ? link.target : link.target.id;
+        return sourceId === node.id || targetId === node.id;
+      }).length;
+
+      return {
+        ...node,
+        __colorKey: colorProperty === 'field' 
+          ? node.field
+          : node.properties[colorProperty] || 'undefined',
+        __edgeCount: edgeCount
+      };
+    }),
     links: graphData.links.filter(link => 
       filteredNodes.some(n => n.id === link.source) && 
       filteredNodes.some(n => n.id === link.target)
@@ -61,6 +129,8 @@ export default function Page() {
             isVisible={isTopBarVisible}
             colorProperty={colorProperty}
             onColorPropertyChange={setColorProperty}
+            onExportImage={handleExportImage}
+            onSearchSelect={handleSearchSelect}
           />
         </div>
 
@@ -73,6 +143,7 @@ export default function Page() {
             updateNode={updateNode}
             removeNode={removeNode}
             colorProperty={colorProperty}
+            onGraphRefUpdate={setGraphRef}
           />
         </main>
       </div>

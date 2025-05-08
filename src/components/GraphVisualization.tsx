@@ -1,13 +1,13 @@
 'use client';
 import dynamic from 'next/dynamic';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { NodeData } from '../types/graph';
 import { useGraphInteractions } from '../hooks/useGraphInteractions';
-import ContextMenu from './ContextMenu';
-import NodePropertiesModal from './NodePropertiesModal';
-import NodeEditModal from './NodeEditModal';
-import NotePopup from './NotePopup';
-import ColorLegend from './ColorLegend';
+import ContextMenu from './graph/ContextMenu';
+import NodePropertiesModal from './modals/NodePropertiesModal';
+import NodeEditModal from './modals/NodeEditModal';
+import NotePopup from './graph/NotePopup';
+import ColorLegend from './graph/ColorLegend';
 import { schemeCategory10 } from 'd3-scale-chromatic';
 
 const ForceGraph3D = dynamic(() => import('react-force-graph-3d'), { ssr: false });
@@ -22,6 +22,7 @@ interface GraphVisualizationProps {
   addLink: (source: number, target: number) => void;
   updateNode: (nodeId: number, updates: Partial<NodeData>) => void;
   removeNode: (nodeId: number) => void;
+  onGraphRefUpdate: (ref: { current: any } | null) => void;
 }
 
 export default function GraphVisualization({ 
@@ -30,7 +31,8 @@ export default function GraphVisualization({
   addNode, 
   addLink, 
   updateNode, 
-  removeNode 
+  removeNode,
+  onGraphRefUpdate
 }: GraphVisualizationProps) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -55,6 +57,18 @@ export default function GraphVisualization({
     handleEngineStop,
     dimensions
   } = useGraphInteractions(addLink);
+
+  // Update when the graph ref changes
+  useEffect(() => {
+    if (graphRef.current && onGraphRefUpdate) {
+      onGraphRefUpdate({ current: graphRef.current });
+    }
+    return () => {
+      if (onGraphRefUpdate) {
+        onGraphRefUpdate(null);
+      }
+    };
+  }, [graphRef, onGraphRefUpdate]);
 
   const handleNodeClick = (node: NodeData, event: MouseEvent) => {
     if (edgeCreationSource !== null) {
@@ -99,6 +113,7 @@ export default function GraphVisualization({
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+      
       <ForceGraph3D
         ref={graphRef}
         width={dimensions.width}
@@ -122,7 +137,13 @@ export default function GraphVisualization({
         linkOpacity={0.3}
         linkWidth={1.5}
         linkColor={link => (link as any).__temp ? '#ff0000' : '#94a3b8'}
-        nodeLabel={(n: NodeData) => `<span style="font-size: 16px">${n.title} — ${n.field}</span>`}
+        nodeVal={(node: any) => (node.__edgeCount || 1) * 2} // Size based on edge count
+        nodeLabel={(n: NodeData) => 
+          `<div style="font-size: 16px">
+            ${n.title} — ${n.field}<br/>
+            Connections: ${n.__edgeCount || 0}
+          </div>`
+        }
         onNodeClick={handleNodeClick}
         onNodeHover={(node, event) => {
           // Only handle hover if we have a node

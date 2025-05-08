@@ -1,11 +1,12 @@
-import { NodeData } from '../types/graph';
+import type { NodeData } from '../types/graph';
 
-export function getUniqueValues(nodes: NodeData[], property: string): string[] {
+export function getUniqueValues(nodes: NodeData[], field: string): string[] {
   return [...new Set(nodes.map(node => 
-    property === 'field' ? node.field : node.properties[property]
-  ).filter(Boolean))];
+    field === 'field' ? node.field : node.properties[field]
+  ))].filter(Boolean);
 }
 
 export function getUniquePropertyKeys(nodes: NodeData[]): string[] {
-  return [...new Set(nodes.flatMap(node => Object.keys(node.properties)))];
+  const propertyKeys = new Set(nodes.flatMap(node => Object.keys(node.properties)));
+  return Array.from(propertyKeys);
 }
