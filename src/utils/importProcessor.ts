@@ -47,15 +47,28 @@ function processLinks(rawLinks: any[], nodes: NodeData[]): any[] {
   if (!Array.isArray(rawLinks)) return [];
   
   const nodeIds = new Set(nodes.map(n => n.id));
+  const linkCounts = new Map<string, number>();
   
   return rawLinks
     .filter(link => {
-      const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-      const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-      return nodeIds.has(Number(sourceId)) && nodeIds.has(Number(targetId));
+      const sourceId = Number(typeof link.source === 'object' ? link.source.id : link.source);
+      const targetId = Number(typeof link.target === 'object' ? link.target.id : link.target);
+      return nodeIds.has(sourceId) && nodeIds.has(targetId);
     })
-    .map(link => ({
-      source: typeof link.source === 'object' ? Number(link.source.id) : Number(link.source),
-      target: typeof link.target === 'object' ? Number(link.target.id) : Number(link.target)
-    }));
+    .map(link => {
+      const sourceId = Number(typeof link.source === 'object' ? link.source.id : link.source);
+      const targetId = Number(typeof link.target === 'object' ? link.target.id : link.target);
+      
+      // Generate or preserve curvature
+      const linkKey = `${Math.min(sourceId, targetId)}-${Math.max(sourceId, targetId)}`;
+      const count = linkCounts.get(linkKey) || 0;
+      linkCounts.set(linkKey, count + 1);
+      
+      return {
+        id: link.id || `link-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        source: sourceId,
+        target: targetId,
+        curvature: link.curvature || (count * 0.2)
+      };
+    });
 }

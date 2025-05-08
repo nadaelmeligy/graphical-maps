@@ -78,6 +78,24 @@ export default function GraphVisualization({
     };
   }, [graphRef, onGraphRefUpdate, isGraphReady]);
 
+  useEffect(() => {
+    // Debug log to check links
+    console.log('Current links:', graphData.links);
+    if (graphRef.current) {
+      graphRef.current.d3ReheatSimulation();
+    }
+  }, [graphData.links]);
+
+  // Create properly formatted links array
+  const processedLinks = useMemo(() => {
+    return graphData.links.map(link => ({
+      ...link,
+      // Ensure source and target are numbers
+      source: typeof link.source === 'object' ? link.source.id : link.source,
+      target: typeof link.target === 'object' ? link.target.id : link.target
+    }));
+  }, [graphData.links]);
+
   const handleNodeClick = (node: NodeData, event: MouseEvent) => {
     if (edgeCreationSource !== null) {
       if (edgeCreationSource !== node.id) {
@@ -128,7 +146,9 @@ export default function GraphVisualization({
         height={dimensions.height}
         graphData={{
           nodes: graphData.nodes,
-          links: [...graphData.links, 
+          // Use processed links instead of direct graphData.links
+          links: [
+            ...processedLinks, 
             ...(dragLine ? [{
               source: dragLine.source,
               target: { x: dragLine.x, y: dragLine.y, z: dragLine.z }
@@ -142,9 +162,13 @@ export default function GraphVisualization({
         }}
         nodeAutoColorBy={(node: any) => node.__colorKey}
         nodeColor={(node: any) => colorMapping.get(node.__colorKey)}
-        linkOpacity={0.3}
-        linkWidth={1.5}
-        linkColor={link => (link as any).__temp ? '#ff0000' : '#94a3b8'}
+        linkOpacity={1} // Increase opacity
+        linkWidth={3} // Increase width
+        linkColor={() => '#94a3b8'} // Consistent color for all non-temp links
+        linkDirectionalParticles={2} // Add particles for better visibility
+        linkDirectionalParticleWidth={4}
+        linkCurvature={0} // Disable curvature temporarily to debug
+        linkResolution={20}
         nodeVal={(node: any) => (node.__edgeCount || 1) * 2} // Size based on edge count
         nodeLabel={(n: NodeData) => 
           `<div style="font-size: 16px">

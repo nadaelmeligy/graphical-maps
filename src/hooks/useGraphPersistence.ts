@@ -17,15 +17,22 @@ export function useGraphPersistence() {
   // Add a link between nodes
   function addLink(sourceId: number, targetId: number) {
     if (sourceId === targetId) return; // Prevent self-loops
-    const linkExists = graphData.links.some(
-      link => link.source === sourceId && link.target === targetId
-    );
-    if (!linkExists) {
-      setGraphData(g => ({
-        nodes: g.nodes,
-        links: [...g.links, { source: sourceId, target: targetId }]
-      }));
-    }
+    
+    const newLink = {
+      id: `link-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      source: sourceId,
+      target: targetId,
+      value: 1  // Add a value property
+    };
+    
+    setGraphData(g => ({
+      nodes: g.nodes,
+      links: [...g.links, newLink]
+    }));
+
+    // Debug log
+    console.log('Added new link:', newLink);
+    console.log('Total links:', graphData.links.length + 1);
   }
 
   // Update a node
