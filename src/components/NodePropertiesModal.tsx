@@ -6,15 +6,17 @@ import { getUniqueValues, getUniquePropertyKeys } from '../utils/propertyOptions
 interface NodePropertiesModalProps {
   existingNodes: NodeData[];
   onClose: () => void;
-  onSave: (data: { title: string; field: string; properties: Record<string, string> }) => void;
+  onSave: (data: { title: string; field: string; properties: Record<string, string>; note: string; }) => void;
 }
 
 export default function NodePropertiesModal({ existingNodes, onClose, onSave }: NodePropertiesModalProps) {
   const [title, setTitle] = useState('');
   const [field, setField] = useState('');
+  const [note, setNote] = useState('');
   const [properties, setProperties] = useState<Record<string, string>>({});
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
+  const [isNewProperty, setIsNewProperty] = useState(false);
 
   // Get unique values for fields and properties
   const uniqueFields = useMemo(() => getUniqueValues(existingNodes, 'field'), [existingNodes]);
@@ -24,14 +26,15 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
     getUniqueValues(existingNodes, propertyKey);
 
   const handleAddProperty = () => {
-    if (!newKey || !newValue) {
-      alert('Please select a property and enter a value');
+    if ((!isNewProperty && !newKey) || !newValue) {
+      alert('Please enter both property name and value');
       return;
     }
     
     setProperties(prev => ({ ...prev, [newKey]: newValue }));
     setNewKey('');
     setNewValue('');
+    setIsNewProperty(false);
   };
 
   const removeProperty = (key: string) => {
@@ -52,18 +55,25 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
             className="w-full border px-2 py-1 rounded"
           />
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-4">
             <input
               value={field}
               onChange={(e) => setField(e.target.value)}
-              placeholder="Field"
-              className="w-1/2 border px-2 py-1 rounded"
+              placeholder="Category"
+              className="w-full border px-2 py-1 rounded"
               list="field-options"
             />
             <datalist id="field-options">
               {uniqueFields.map(f => <option key={f} value={f} />)}
             </datalist>
           </div>
+
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Add a note..."
+            className="w-full border px-2 py-1 rounded h-24 resize-none"
+          />
 
           <div className="border-t pt-4">
             <h3 className="font-medium mb-2">Custom Properties</h3>
@@ -92,21 +102,7 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
             ))}
 
             <div className="flex gap-2">
-              <select
-                value={newKey}
-                onChange={(e) => setNewKey(e.target.value)}
-                className="border px-2 py-1 rounded w-1/2"
-              >
-                <option value="">Select property</option>
-                {existingPropertyKeys
-                  .filter(key => !Object.keys(properties).includes(key))
-                  .map(key => (
-                    <option key={key} value={key}>{key}</option>
-                  ))}
-                <option value="__new__">Add new property...</option>
-              </select>
-
-              {newKey === '__new__' ? (
+              {isNewProperty ? (
                 <input
                   value={newKey}
                   onChange={(e) => setNewKey(e.target.value)}
@@ -114,18 +110,44 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
                   className="border px-2 py-1 rounded w-1/2"
                 />
               ) : (
-                <input
-                  value={newValue}
-                  onChange={(e) => setNewValue(e.target.value)}
-                  placeholder="Value"
+                <select
+                  value={newKey}
+                  onChange={(e) => {
+                    if (e.target.value === '__new__') {
+                      setIsNewProperty(true);
+                      setNewKey('');
+                    } else {
+                      setNewKey(e.target.value);
+                    }
+                  }}
                   className="border px-2 py-1 rounded w-1/2"
-                  list={newKey ? `values-new-${newKey}` : undefined}
-                />
+                >
+                  <option value="">Select property</option>
+                  {existingPropertyKeys
+                    .filter(key => !Object.keys(properties).includes(key))
+                    .map(key => (
+                      <option key={key} value={key}>{key}</option>
+                    ))}
+                  <option value="__new__">Add new property...</option>
+                </select>
+              )}
+
+              <input
+                value={newValue}
+                onChange={(e) => setNewValue(e.target.value)}
+                placeholder="Value"
+                className="border px-2 py-1 rounded w-1/2"
+                list={!isNewProperty && newKey ? `values-new-${newKey}` : undefined}
+              />
+              {!isNewProperty && newKey && (
+                <datalist id={`values-new-${newKey}`}>
+                  {getPropertyValues(newKey).map(v => <option key={v} value={v} />)}
+                </datalist>
               )}
             </div>
             <button
               onClick={handleAddProperty}
-              disabled={!newKey || !newValue || newKey === '__new__'}
+              disabled={(!isNewProperty && !newKey) || !newValue}
               className="mt-2 bg-blue-500 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
             >
               Add Property
@@ -143,7 +165,7 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
           <button
             onClick={() => {
               if (title && field) {
-                onSave({ title, field, properties });
+                onSave({ title, field, properties, note });
               }
             }}
             disabled={!title || !field}

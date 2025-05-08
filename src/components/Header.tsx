@@ -3,7 +3,12 @@
 import { FC } from 'react';
 import Image from 'next/image';
 
-const Header: FC = () => (
+interface HeaderProps {
+  onToggleTopBar: () => void;
+  isTopBarVisible: boolean;
+}
+
+const Header: FC<HeaderProps> = ({ onToggleTopBar, isTopBarVisible }) => (
   <header className="bg-gray-800 text-white p-4 shadow-md flex items-center justify-between">
     <div className="flex items-center space-x-2">
       <Image
@@ -13,9 +18,15 @@ const Header: FC = () => (
         height={32}
         className="rounded-full object-cover overflow-hidden border-2 border-gray-300 shadow-sm"
       />
-      <span className="text-xl font-bold">concept network</span>
+      <span className="text-xl font-bold">Concept Map</span>
     </div>
     <nav className="space-x-4">
+      <button 
+        onClick={onToggleTopBar}
+        className="text-gray-300 hover:text-white transition"
+      >
+        {isTopBarVisible ? 'Hide Tools' : 'Show Tools'}
+      </button>
       <a href="#" className="text-gray-300 hover:text-white transition">Home</a>
       <a href="#" className="text-gray-300 hover:text-white transition">Docs</a>
     </nav>

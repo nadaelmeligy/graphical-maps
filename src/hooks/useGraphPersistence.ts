@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { GraphData, NodeData, LinkData } from '../types/graph';
+import { processImportedGraph } from '../utils/importProcessor';
 
 export function useGraphPersistence() {
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
 
   // Add a single node
-  function addNode(title: string, field: string, properties: Record<string, string> = {}) {
+  function addNode(title: string, field: string, properties: Record<string, string> = {}, note?: string, color?: string) {
     const nextId = graphData.nodes.length
       ? Math.max(...graphData.nodes.map(n => n.id)) + 1
       : 0;
-    const node: NodeData = { id: nextId, title, field, properties };
+    const node: NodeData = { id: nextId, title, field, note, properties, color };
     setGraphData(g => ({ nodes: [...g.nodes, node], links: g.links }));
   }
 
@@ -61,18 +62,19 @@ export function useGraphPersistence() {
   }
 
   // Import from JSON file
-  function importGraph(file: File) {
+  const importGraph = useCallback((file: File) => {
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = (event) => {
       try {
-        const json = JSON.parse(reader.result as string);
-        setGraphData(json);
-      } catch {
-        alert('Invalid JSON');
+        const rawData = JSON.parse(event.target?.result as string);
+        const processedData = processImportedGraph(rawData);
+        setGraphData(processedData);
+      } catch (error) {
+        console.error('Error importing graph:', error);
       }
     };
     reader.readAsText(file);
-  }
+  }, []);
 
   return { 
     graphData, 
