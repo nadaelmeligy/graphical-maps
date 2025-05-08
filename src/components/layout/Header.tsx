@@ -3,14 +3,18 @@
 import { FC, useState } from 'react';
 import Image from 'next/image';
 import AboutModal from '../modals/AboutModal';
+import SettingsModal from '../modals/SettingsModal';
 
 interface HeaderProps {
   onToggleTopBar: () => void;
   isTopBarVisible: boolean;
+  settings: { showLinkCount: boolean };
+  onSettingsChange: (settings: { showLinkCount: boolean }) => void;
 }
 
-const Header: FC<HeaderProps> = ({ onToggleTopBar, isTopBarVisible }) => {
+const Header: FC<HeaderProps> = ({ onToggleTopBar, isTopBarVisible, settings, onSettingsChange }) => {
   const [showAbout, setShowAbout] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   return (
     <header className="bg-gray-800 text-white p-4 shadow-md flex items-center justify-between">
@@ -40,8 +44,21 @@ const Header: FC<HeaderProps> = ({ onToggleTopBar, isTopBarVisible }) => {
         >
           About
         </button>
+        <button 
+          onClick={() => setShowSettings(true)}
+          className="text-gray-300 hover:text-white transition"
+        >
+          Settings
+        </button>
       </nav>
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
+      {showSettings && (
+        <SettingsModal
+          onClose={() => setShowSettings(false)}
+          settings={settings}
+          onSettingsChange={onSettingsChange}
+        />
+      )}
     </header>
   );
 };

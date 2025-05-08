@@ -20,6 +20,10 @@ export default function Page() {
   const [colorProperty, setColorProperty] = useState('field');
   const [graphRef, setGraphRef] = useState<{ current: any; isReady: boolean } | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [settings, setSettings] = useState({ 
+    showLinkCount: true,
+    showCategory: true 
+  });
 
   const handleExportImage = async () => {
     if (!graphRef?.current || !graphRef.isReady) {
@@ -105,6 +109,8 @@ export default function Page() {
       <Header 
         onToggleTopBar={() => setIsTopBarVisible(!isTopBarVisible)} 
         isTopBarVisible={isTopBarVisible}
+        settings={settings}
+        onSettingsChange={setSettings}
       />
 
       <div className="flex-1 flex flex-col bg-white">
@@ -133,6 +139,7 @@ export default function Page() {
             removeNode={removeNode}
             colorProperty={colorProperty}
             onGraphRefUpdate={setGraphRef}
+            showLinkCount={settings.showLinkCount}
           />
         </main>
       </div>

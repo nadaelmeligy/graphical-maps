@@ -1,6 +1,6 @@
 'use client';
 import dynamic from 'next/dynamic';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import type { NodeData } from '../types/graph';
 import { useGraphInteractions } from '../hooks/useGraphInteractions';
 import ContextMenu from './graph/ContextMenu';
@@ -23,6 +23,8 @@ interface GraphVisualizationProps {
   updateNode: (nodeId: number, updates: Partial<NodeData>) => void;
   removeNode: (nodeId: number) => void;
   onGraphRefUpdate: (ref: { current: any; isReady: boolean } | null) => void;
+  showLinkCount: boolean;
+  showCategory: boolean;
 }
 
 export default function GraphVisualization({ 
@@ -32,7 +34,9 @@ export default function GraphVisualization({
   addLink, 
   updateNode, 
   removeNode,
-  onGraphRefUpdate
+  onGraphRefUpdate,
+  showLinkCount,
+  showCategory
 }: GraphVisualizationProps) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -137,9 +141,28 @@ export default function GraphVisualization({
     return colorMap;
   }, [graphData.nodes]);
 
+  const resetCamera = useCallback(() => {
+    if (graphRef.current) {
+      // Get graph center and size
+      const distanceToCenter = Math.cbrt(graphData.nodes.length) * 150;
+      graphRef.current.cameraPosition(
+        { x: distanceToCenter, y: distanceToCenter, z: distanceToCenter }, // new position
+        { x: 0, y: 0, z: 0 }, // lookAt center
+        3000 // transition duration
+      );
+    }
+  }, [graphData.nodes.length]);
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      
+      <button
+        onClick={resetCamera}
+        className="absolute top-4 right-4 z-10 px-1.5 py-1 bg-gray-800 text-white rounded-md 
+                   hover:bg-gray-700 transition-colors shadow-lg"
+      >
+        Reset View
+      </button>
+
       <ForceGraph3D
         ref={graphRef}
         width={dimensions.width}
@@ -172,8 +195,9 @@ export default function GraphVisualization({
         nodeVal={(node: any) => (node.__edgeCount || 1) * 2} // Size based on edge count
         nodeLabel={(n: NodeData) => 
           `<div style="font-size: 16px">
-            ${n.title} — ${n.field}<br/>
-            Connections: ${n.__edgeCount || 0}
+            ${n.title}
+            ${showCategory ? ` — ${n.field}` : ''}
+            ${showLinkCount ? `<br/>Connections: ${n.__edgeCount || 0}` : ''}
           </div>`
         }
         onNodeClick={handleNodeClick}
