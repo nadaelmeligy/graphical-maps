@@ -1,6 +1,8 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
+import * as THREE from 'three';
 import 'katex/dist/katex.min.css';
+import katex from 'katex';
 
 interface EquationLabelProps {
   equation: string;
@@ -10,81 +12,51 @@ interface EquationLabelProps {
 
 export default function EquationLabel({ equation, position, graphRef }: EquationLabelProps) {
   const labelRef = useRef<HTMLDivElement>(null);
-  const [screenPosition, setScreenPosition] = useState({ x: 0, y: 0 });
+
+  const updatePosition = () => {
+    if (!labelRef.current || !graphRef?.current) return;
+
+    const vector = new THREE.Vector3(position.x, position.y, position.z);
+    const camera = graphRef.current.camera();
+    vector.project(camera);
+
+    const canvas = graphRef.current.renderer().domElement;
+    const x = ((vector.x + 1) / 2) * canvas.width;
+    const y = ((-vector.y + 1) / 2) * canvas.height;
+
+    labelRef.current.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+  };
 
   useEffect(() => {
-    const updatePosition = () => {
-      if (!graphRef?.current) return;
-      
-      // Convert 3D position to screen coordinates
-      const vector = new THREE.Vector3(position.x, position.y, position.z);
-      const camera = graphRef.current.camera();
-      vector.project(camera);
-      
-      // Convert to pixel coordinates
-      const canvas = graphRef.current.renderer().domElement;
-      setScreenPosition({
-        x: ((vector.x + 1) / 2) * canvas.width,
-        y: ((-vector.y + 1) / 2) * canvas.height
+    if (!labelRef.current) return;
+
+    try {
+      katex.render(equation, labelRef.current, {
+        throwOnError: false,
+        displayMode: true,
+        strict: false,
+        trust: true
       });
-    };
-
-    // Render equation
-    const renderEquation = async () => {
-      if (labelRef.current && equation) {
-        try {
-          const katex = (await import('katex')).default;
-          katex.render(equation, labelRef.current, {
-            throwOnError: false,
-            displayMode: true,
-            output: 'html',
-            strict: false
-          });
-        } catch (error) {
-          console.error('LaTeX rendering error:', error);
-        }
+    } catch (error) {
+      console.error('KaTeX rendering error:', error);
+      if (labelRef.current) {
+        labelRef.current.textContent = equation;
       }
-    };
-
-    renderEquation();
-    updatePosition();
-
-    // Add event listeners for camera movement
-    const canvas = graphRef?.current?.renderer()?.domElement;
-    if (canvas) {
-      canvas.addEventListener('mousedown', updatePosition);
-      canvas.addEventListener('mouseup', updatePosition);
-      canvas.addEventListener('mousemove', updatePosition);
     }
 
-    // Cleanup
-    return () => {
-      if (canvas) {
-        canvas.removeEventListener('mousedown', updatePosition);
-        canvas.removeEventListener('mouseup', updatePosition);
-        canvas.removeEventListener('mousemove', updatePosition);
-      }
+    const animate = () => {
+      updatePosition();
+      requestAnimationFrame(animate);
     };
-  }, [equation, position, graphRef]);
+
+    animate();
+  }, [equation, position]);
 
   return (
     <div
       ref={labelRef}
-      style={{
-        position: 'absolute',
-        left: `${screenPosition.x}px`,
-        top: `${screenPosition.y}px`,
-        transform: 'translate(20px, -50%)', // Offset from node
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        padding: '8px 12px',
-        borderRadius: '8px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-        zIndex: 10,
-        maxWidth: '300px',
-        overflowX: 'auto',
-        pointerEvents: 'none' // Prevent interference with graph interaction
-      }}
-      className="equation-label"
+      className="absolute top-0 left-0 bg-white bg-opacity-80 p-2 rounded shadow-md text-sm z-10"
+      style={{ pointerEvents: 'none' }}
     />
   );
 }

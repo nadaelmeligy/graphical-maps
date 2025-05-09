@@ -22,13 +22,16 @@ interface GraphVisualizationProps {
   };
   colorProperty: string;
   addNode: (title: string, field: string, properties: Record<string, string>, note?: string) => void;
-  addLink: (source: number, target: number) => void;
+  addLink: (source: number, target: number, type: EdgeType) => void;
   updateNode: (nodeId: number, updates: Partial<NodeData>) => void;
   removeNode: (nodeId: number) => void;
   onGraphRefUpdate: (ref: { current: any; isReady: boolean } | null) => void;
   showLinkCount: boolean;
   showCategory: boolean;
   labelType: NodeLabelType;
+  defaultEdgeType: EdgeType;
+  onEdgeTypeChange: (type: EdgeType) => void;
+  linkDistance: number;
 }
 
 export default function GraphVisualization({ 
@@ -41,7 +44,10 @@ export default function GraphVisualization({
   onGraphRefUpdate,
   showLinkCount,
   showCategory,
-  labelType
+  labelType,
+  defaultEdgeType,
+  onEdgeTypeChange,
+  linkDistance,
 }: GraphVisualizationProps) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -95,6 +101,30 @@ export default function GraphVisualization({
     }
   }, [graphData.links]);
 
+  // Add this effect to update existing links when edge type changes
+  useEffect(() => {
+    if (graphRef.current) {
+      // Update all links to use the new edge type
+      graphData.links.forEach(link => {
+        if (!link.__temp) { // Don't update temporary links
+          link.type = defaultEdgeType;
+        }
+      });
+      graphRef.current.refresh();
+    }
+  }, [defaultEdgeType]);
+
+  // Add this effect to update link distance
+  useEffect(() => {
+    if (graphRef.current) {
+      const linkForce = graphRef.current.d3Force('link');
+      if (linkForce) {
+        linkForce.distance(linkDistance);
+        graphRef.current.d3ReheatSimulation();
+      }
+    }
+  }, [linkDistance]);
+
   // Create properly formatted links array
   const processedLinks = useMemo(() => {
     return graphData.links.map(link => ({
@@ -105,10 +135,14 @@ export default function GraphVisualization({
     }));
   }, [graphData.links]);
 
+  const handleLinkCreation = (source: number, target: number) => {
+    addLink(source, target, defaultEdgeType);
+  };
+
   const handleNodeClick = (node: NodeData, event: MouseEvent) => {
     if (edgeCreationSource !== null) {
       if (edgeCreationSource !== node.id) {
-        addLink(edgeCreationSource, node.id);
+        handleLinkCreation(edgeCreationSource, node.id);
       }
       setEdgeCreationSource(null);
       return;
@@ -240,13 +274,27 @@ export default function GraphVisualization({
         }}
         nodeAutoColorBy={(node: any) => node.__colorKey}
         nodeColor={(node: any) => colorMapping.get(node.__colorKey)}
-        linkOpacity={1} // Increase opacity
-        linkWidth={3} // Increase width
-        linkColor={() => '#94a3b8'} // Consistent color for all non-temp links
-        linkDirectionalParticles={2} // Add particles for better visibility
-        linkDirectionalParticleWidth={4}
-        linkCurvature={0} // Disable curvature temporarily to debug
-        linkResolution={20}
+        linkOpacity={1}
+        linkWidth={2}
+        linkColor={() => '#94a3b8'}
+        linkLineDash={link => {
+          if (!link) return [];
+          switch (link.type) {
+            case 'dashed': return [5, 5];
+            case 'dotted': return [2, 2];
+            default: return [];
+          }
+        }}
+        linkDirectionalArrowLength={link => 
+          link?.type === 'arrow' ? 8 : 
+          link?.type === 'bidirectional' ? 6 : 0
+        }
+        linkDirectionalArrowRelPos={1}
+        linkDirectionalParticles={link => 
+          link?.type === 'bidirectional' ? 2 : 0
+        }
+        linkDirectionalParticleWidth={2}
+        linkCurvature={0}
         nodeVal={(node: any) => (node.__edgeCount || 1) * 2} // Size based on edge count
         nodeLabel={getNodeLabel}
         nodeThreeObject={node => {
@@ -304,7 +352,10 @@ export default function GraphVisualization({
         enableNodeDrag={true}
         forceEngine="d3"
         cooldownTicks={50}
-        d3Force={configureD3Force}
+        d3Force={(force) => {
+          force.force('link').distance(linkDistance);
+          configureD3Force(force);
+        }}
         onEngineStop={handleEngineStop}
         style={{
           position: 'absolute',
@@ -327,9 +378,9 @@ export default function GraphVisualization({
         />
       )}
 
-      {/* Only show equation labels if not already showing as node labels */}
+      {/* Only show equation labels if equation exists AND we're not showing equations as node labels */}
       {labelType !== 'equation' && graphData.nodes.map(node => 
-        node.equation ? (
+        node.equation && node.labelConfig?.type !== 'equation' ? (
           <EquationLabel
             key={`eq-${node.id}`}
             equation={node.equation}

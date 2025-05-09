@@ -25,7 +25,7 @@ export interface LinkData {
   id: string;  // Unique identifier for each link
   source: number; 
   target: number; 
-  type?: EdgeType;
+  type: EdgeType;
 }
 
 export interface GraphData { 

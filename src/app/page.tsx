@@ -37,6 +37,11 @@ export default function Page() {
     addLink(source, target, settings.defaultEdgeType);
   };
 
+  // Add this helper function
+  const handleEdgeTypeChange = (type: EdgeType) => {
+    setSettings(prev => ({ ...prev, defaultEdgeType: type }));
+  };
+
   // Apply topology when it changes
   useEffect(() => {
     if (graphRef?.current && settings.topology !== 'free') {
@@ -56,7 +61,10 @@ export default function Page() {
       // Give time for the new forces to take effect
       setTimeout(() => {
         if (graphRef.current) {
-          graphRef.current.d3Force('center').strength(0.05);
+          const centerForce = graphRef.current.d3Force('center');
+          if (centerForce) {
+            centerForce.strength(0.05);
+          }
         }
       }, 2000);
     }
@@ -182,6 +190,7 @@ export default function Page() {
             showCategory={settings.showCategory}
             showArrows={settings.showArrows}
             defaultEdgeType={settings.defaultEdgeType}
+            onEdgeTypeChange={handleEdgeTypeChange}
             layout={settings.layout}
             linkDistance={settings.linkDistance}
             chargeStrength={settings.chargeStrength}

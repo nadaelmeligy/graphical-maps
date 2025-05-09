@@ -5,6 +5,7 @@ import Image from 'next/image';
 import AboutModal from '../modals/AboutModal';
 import SettingsModal from '../modals/SettingsModal';
 import DocumentationModal from '../docs/DocumentationModal';
+import EdgeTypeSelector from '../EdgeTypeSelector';
 
 interface HeaderProps {
   onToggleTopBar: () => void;
@@ -14,6 +15,7 @@ interface HeaderProps {
     showCategory: boolean;
     layout: 'force' | 'radial' | 'hierarchical' | 'circular';
     topology: 'free' | 'star' | 'ring' | 'grid' | 'tree';
+    defaultEdgeType: string;
   };
   onSettingsChange: (settings: typeof HeaderProps['settings']) => void;
 }
@@ -70,7 +72,17 @@ const Header: FC<HeaderProps> = ({ onToggleTopBar, isTopBarVisible, settings, on
           onClose={() => setShowSettings(false)}
           settings={settings}
           onSettingsChange={onSettingsChange}
-        />
+        >
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-sm text-gray-300">Default Edge Type</label>
+              <EdgeTypeSelector
+                currentType={settings.defaultEdgeType}
+                onChange={(type) => onSettingsChange({ ...settings, defaultEdgeType: type })}
+              />
+            </div>
+          </div>
+        </SettingsModal>
       )}
     </header>
   );

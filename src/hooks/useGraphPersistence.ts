@@ -80,6 +80,16 @@ export function useGraphPersistence() {
     reader.readAsText(file);
   }, []);
 
+  // Update edge type
+  function updateEdgeType(linkId: string, type: EdgeType) {
+    setGraphData(g => ({
+      nodes: g.nodes,
+      links: g.links.map(link => 
+        link.id === linkId ? { ...link, type } : link
+      )
+    }));
+  }
+
   return { 
     graphData, 
     addNode, 
@@ -87,6 +97,7 @@ export function useGraphPersistence() {
     updateNode, 
     removeNode, 
     exportGraph, 
-    importGraph 
+    importGraph, 
+    updateEdgeType 
   };
 }
