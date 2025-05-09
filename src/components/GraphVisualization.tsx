@@ -9,6 +9,7 @@ import NodeEditModal from './modals/NodeEditModal';
 import NotePopup from './graph/NotePopup';
 import ColorLegend from './graph/ColorLegend';
 import { schemeCategory10 } from 'd3-scale-chromatic';
+import CameraControls from './graph/CameraControls';
 
 const ForceGraph3D = dynamic(() => import('react-force-graph-3d'), { ssr: false });
 
@@ -25,6 +26,7 @@ interface GraphVisualizationProps {
   onGraphRefUpdate: (ref: { current: any; isReady: boolean } | null) => void;
   showLinkCount: boolean;
   showCategory: boolean;
+  showArrows: boolean;
 }
 
 export default function GraphVisualization({ 
@@ -36,7 +38,8 @@ export default function GraphVisualization({
   removeNode,
   onGraphRefUpdate,
   showLinkCount,
-  showCategory
+  showCategory,
+  showArrows
 }: GraphVisualizationProps) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -101,6 +104,7 @@ export default function GraphVisualization({
   }, [graphData.links]);
 
   const handleNodeClick = (node: NodeData, event: MouseEvent) => {
+    // Handle edge creation first
     if (edgeCreationSource !== null) {
       if (edgeCreationSource !== node.id) {
         addLink(edgeCreationSource, node.id);
@@ -109,12 +113,22 @@ export default function GraphVisualization({
       return;
     }
 
-    setContextMenu({
-      x: event.clientX,
-      y: event.clientY,
-      type: 'node',
-      nodeId: node.id
-    });
+    // Handle right click for context menu
+    if (event.button === 2 || event.ctrlKey) {
+      event.preventDefault();
+      setContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        type: 'node',
+        nodeId: node.id
+      });
+      return;
+    }
+
+    // Handle left click for URL
+    if (node.url) {
+      window.open(node.url, '_blank');
+    }
   };
 
   const startEdgeCreation = (nodeId: number) => {
@@ -154,7 +168,9 @@ export default function GraphVisualization({
   }, [graphData.nodes.length]);
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}
+         onContextMenu={(e) => e.preventDefault()} // Prevent default context menu
+    >
       <button
         onClick={resetCamera}
         className="absolute top-4 right-4 z-10 px-1.5 py-1 bg-gray-800 text-white rounded-md 
@@ -162,6 +178,8 @@ export default function GraphVisualization({
       >
         Reset View
       </button>
+
+      <CameraControls graphRef={graphRef} visible={showArrows} />
 
       <ForceGraph3D
         ref={graphRef}
@@ -198,9 +216,13 @@ export default function GraphVisualization({
             ${n.title}
             ${showCategory ? ` — ${n.field}` : ''}
             ${showLinkCount ? `<br/>Connections: ${n.__edgeCount || 0}` : ''}
+            ${n.url ? '<br/>🔗 Click to open link' : ''}
           </div>`
         }
         onNodeClick={handleNodeClick}
+        onNodeRightClick={(node, event) => {
+          handleNodeClick(node as NodeData, event as MouseEvent);
+        }}
         onNodeHover={(node, event) => {
           // Only handle hover if we have a node
           if (!node) {

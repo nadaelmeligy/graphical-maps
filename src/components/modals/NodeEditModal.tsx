@@ -10,13 +10,13 @@ interface NodeEditModalProps {
 }
 
 export default function NodeEditModal({ node, existingNodes, onClose, onSave }: NodeEditModalProps) {
-  const [title, setTitle] = useState(node.title);
-  const [field, setField] = useState(node.field);
-  const [note, setNote] = useState(node.note || '');
-  const [properties, setProperties] = useState(node.properties);
-  const [newKey, setNewKey] = useState('');
-  const [newValue, setNewValue] = useState('');
-  const [isNewProperty, setIsNewProperty] = useState(false);
+  const [formData, setFormData] = useState({
+    title: node.title,
+    field: node.field,
+    properties: { ...node.properties },
+    note: node.note || '',
+    url: node.url || '' // Initialize URL from node data
+  });
 
   const uniqueFields = useMemo(() => getUniqueValues(existingNodes, 'field'), [existingNodes]);
   const existingPropertyKeys = useMemo(() => getUniquePropertyKeys(existingNodes), [existingNodes]);
@@ -25,15 +25,18 @@ export default function NodeEditModal({ node, existingNodes, onClose, onSave }: 
     getUniqueValues(existingNodes, propertyKey);
 
   const handleAddProperty = () => {
-    if ((!isNewProperty && !newKey) || !newValue) {
+    if ((!formData.isNewProperty && !formData.newKey) || !formData.newValue) {
       alert('Please enter both property name and value');
       return;
     }
     
-    setProperties(prev => ({ ...prev, [newKey]: newValue }));
-    setNewKey('');
-    setNewValue('');
-    setIsNewProperty(false);
+    setFormData(prev => ({
+      ...prev,
+      properties: { ...prev.properties, [formData.newKey]: formData.newValue },
+      newKey: '',
+      newValue: '',
+      isNewProperty: false
+    }));
   };
 
   return (
@@ -43,15 +46,15 @@ export default function NodeEditModal({ node, existingNodes, onClose, onSave }: 
         
         <div className="space-y-4">
           <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={formData.title}
+            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
             placeholder="Node Title"
             className="w-full border px-2 py-1 rounded"
           />
 
           <input
-            value={field}
-            onChange={(e) => setField(e.target.value)}
+            value={formData.field}
+            onChange={(e) => setFormData(prev => ({ ...prev, field: e.target.value }))}
             placeholder="Category"
             className="w-full border px-2 py-1 rounded"
             list="edit-field-options"
@@ -61,22 +64,36 @@ export default function NodeEditModal({ node, existingNodes, onClose, onSave }: 
           </datalist>
 
           <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
+            value={formData.note}
+            onChange={(e) => setFormData(prev => ({ ...prev, note: e.target.value }))}
             placeholder="Add a note..."
             className="w-full border px-2 py-1 rounded h-24 resize-none"
           />
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700">URL</label>
+            <input
+              type="url"
+              value={formData.url}
+              onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="https://example.com"
+            />
+          </div>
+
           <div className="border-t pt-4">
             <h3 className="font-medium mb-2">Properties</h3>
-            {Object.entries(properties).map(([key, value]) => (
+            {Object.entries(formData.properties).map(([key, value]) => (
               <div key={key} className="flex gap-2 mb-2">
                 <input value={key} disabled className="border px-2 py-1 rounded w-1/2" />
                 <input
                   value={value}
-                  onChange={(e) => setProperties(prev => ({
+                  onChange={(e) => setFormData(prev => ({
                     ...prev,
-                    [key]: e.target.value
+                    properties: {
+                      ...prev.properties,
+                      [key]: e.target.value
+                    }
                   }))}
                   className="border px-2 py-1 rounded w-1/2"
                   list={`edit-values-${key}`}
@@ -86,8 +103,8 @@ export default function NodeEditModal({ node, existingNodes, onClose, onSave }: 
                 </datalist>
                 <button
                   onClick={() => {
-                    const { [key]: _, ...rest } = properties;
-                    setProperties(rest);
+                    const { [key]: _, ...rest } = formData.properties;
+                    setFormData(prev => ({ ...prev, properties: rest }));
                   }}
                   className="text-red-500 px-2"
                 >
@@ -97,29 +114,28 @@ export default function NodeEditModal({ node, existingNodes, onClose, onSave }: 
             ))}
 
             <div className="flex gap-2">
-              {isNewProperty ? (
+              {formData.isNewProperty ? (
                 <input
-                  value={newKey}
-                  onChange={(e) => setNewKey(e.target.value)}
+                  value={formData.newKey}
+                  onChange={(e) => setFormData(prev => ({ ...prev, newKey: e.target.value }))}
                   placeholder="New property name"
                   className="border px-2 py-1 rounded w-1/2"
                 />
               ) : (
                 <select
-                  value={newKey}
+                  value={formData.newKey}
                   onChange={(e) => {
                     if (e.target.value === '__new__') {
-                      setIsNewProperty(true);
-                      setNewKey('');
+                      setFormData(prev => ({ ...prev, isNewProperty: true, newKey: '' }));
                     } else {
-                      setNewKey(e.target.value);
+                      setFormData(prev => ({ ...prev, newKey: e.target.value }));
                     }
                   }}
                   className="border px-2 py-1 rounded w-1/2"
                 >
                   <option value="">Select property</option>
                   {existingPropertyKeys
-                    .filter(key => !Object.keys(properties).includes(key))
+                    .filter(key => !Object.keys(formData.properties).includes(key))
                     .map(key => (
                       <option key={key} value={key}>{key}</option>
                     ))}
@@ -128,21 +144,21 @@ export default function NodeEditModal({ node, existingNodes, onClose, onSave }: 
               )}
 
               <input
-                value={newValue}
-                onChange={(e) => setNewValue(e.target.value)}
+                value={formData.newValue}
+                onChange={(e) => setFormData(prev => ({ ...prev, newValue: e.target.value }))}
                 placeholder="Value"
                 className="border px-2 py-1 rounded w-1/2"
-                list={!isNewProperty && newKey ? `edit-values-new-${newKey}` : undefined}
+                list={!formData.isNewProperty && formData.newKey ? `edit-values-new-${formData.newKey}` : undefined}
               />
-              {!isNewProperty && newKey && (
-                <datalist id={`edit-values-new-${newKey}`}>
-                  {getPropertyValues(newKey).map(v => <option key={v} value={v} />)}
+              {!formData.isNewProperty && formData.newKey && (
+                <datalist id={`edit-values-new-${formData.newKey}`}>
+                  {getPropertyValues(formData.newKey).map(v => <option key={v} value={v} />)}
                 </datalist>
               )}
             </div>
             <button
               onClick={handleAddProperty}
-              disabled={(!isNewProperty && !newKey) || !newValue}
+              disabled={(!formData.isNewProperty && !formData.newKey) || !formData.newValue}
               className="mt-2 bg-blue-500 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
             >
               Add Property
@@ -156,10 +172,16 @@ export default function NodeEditModal({ node, existingNodes, onClose, onSave }: 
           </button>
           <button
             onClick={() => {
-              onSave({ title, field, properties, note });
+              onSave({
+                title: formData.title,
+                field: formData.field,
+                properties: formData.properties,
+                note: formData.note,
+                url: formData.url
+              });
               onClose();
             }}
-            disabled={!title || !field}
+            disabled={!formData.title || !formData.field}
             className="bg-blue-500 text-white px-4 py-1 rounded disabled:opacity-50"
           >
             Save Changes

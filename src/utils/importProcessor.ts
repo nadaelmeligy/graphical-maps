@@ -22,6 +22,7 @@ function processNode(rawNode: any): NodeData {
     field: rawNode.field || 'undefined',
     properties: processProperties(rawNode.properties),
     note: rawNode.note || '',
+    url: rawNode.url || '',  // Preserve or initialize URL
     // Preserve any existing x,y,z positions if they exist
     ...(rawNode.x !== undefined ? { x: rawNode.x } : {}),
     ...(rawNode.y !== undefined ? { y: rawNode.y } : {}),

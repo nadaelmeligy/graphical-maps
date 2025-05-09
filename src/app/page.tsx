@@ -1,11 +1,12 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGraphPersistence } from '../hooks/useGraphPersistence';
 import Header from '../components/layout/Header';
 import TopBar from '../components/toolbar/TopBar';
 import GraphVisualization from '../components/GraphVisualization';
 import ImagePreviewModal from '../components/modals/ImagePreviewModal';
 import { exportGraphImage, createGraphPreview, downloadGraphImage } from '../utils/graphExport';
+import { applyTopology, Topology } from '../utils/topologyLayouts';
 
 /**
  * Main page component that orchestrates the graph visualization application
@@ -22,8 +23,26 @@ export default function Page() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [settings, setSettings] = useState({ 
     showLinkCount: true,
-    showCategory: true 
+    showCategory: true,
+    layout: 'force' as const,
+    linkDistance: 100,
+    chargeStrength: -50,
+    topology: 'free' as Topology,
+    showArrows: true
   });
+
+  // Apply topology when it changes
+  useEffect(() => {
+    if (graphRef?.current && settings.topology !== 'free') {
+      const positions = applyTopology(graphData.nodes, settings.topology);
+      positions.forEach((pos, i) => {
+        if (pos.x !== undefined) graphData.nodes[i].x = pos.x;
+        if (pos.y !== undefined) graphData.nodes[i].y = pos.y;
+        if (pos.z !== undefined) graphData.nodes[i].z = pos.z;
+      });
+      graphRef.current.d3ReheatSimulation();
+    }
+  }, [settings.topology, graphData.nodes, graphRef]);
 
   const handleExportImage = async () => {
     if (!graphRef?.current || !graphRef.isReady) {
@@ -140,6 +159,8 @@ export default function Page() {
             colorProperty={colorProperty}
             onGraphRefUpdate={setGraphRef}
             showLinkCount={settings.showLinkCount}
+            topology={settings.topology}
+            showArrows={settings.showArrows}
           />
         </main>
       </div>

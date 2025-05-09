@@ -1,7 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import type { NodeData } from '../types/graph';
 
-export function useGraphInteractions(addLink: (source: number, target: number) => void) {
+export function useGraphInteractions(
+  addLink: (source: number, target: number) => void,
+  layout: string,
+  linkDistance: number,
+  chargeStrength: number
+) {
   const [dragLine, setDragLine] = useState<{ source: number; x: number; y: number; z: number } | null>(null);
   const [isSimulationRunning, setSimulationRunning] = useState(true);
   const [edgeCreationSource, setEdgeCreationSource] = useState<number | null>(null);
@@ -46,10 +51,31 @@ export function useGraphInteractions(addLink: (source: number, target: number) =
   };
 
   const configureD3Force = (d3: any) => {
-    d3.force('charge')?.strength(-50);
-    d3.force('link')?.distance(100);
-    d3.force('center')?.strength(isSimulationRunning ? 0.05 : 0);
-    d3.force('collision')?.radius(20);
+    switch (layout) {
+      case 'radial':
+        d3.force('charge')?.strength(chargeStrength);
+        d3.force('link')?.distance(linkDistance);
+        d3.force('radial', d3.forceRadial(200));
+        break;
+        
+      case 'hierarchical':
+        d3.force('charge')?.strength(chargeStrength);
+        d3.force('link')?.distance(linkDistance);
+        d3.force('y', d3.forceY().strength(0.1));
+        break;
+        
+      case 'circular':
+        d3.force('charge')?.strength(chargeStrength * 0.5);
+        d3.force('link')?.distance(linkDistance * 0.8);
+        d3.force('center', d3.forceCenter(0, 0).strength(1));
+        break;
+        
+      default: // force-directed
+        d3.force('charge')?.strength(chargeStrength);
+        d3.force('link')?.distance(linkDistance);
+        d3.force('center')?.strength(0.05);
+        d3.force('collision')?.radius(20);
+    }
   };
 
   const handleEngineStop = () => {

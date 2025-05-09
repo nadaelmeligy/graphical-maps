@@ -3,17 +3,28 @@ import { useState, useMemo } from 'react';
 import type { NodeData } from '../../types/graph';
 import { getUniqueValues, getUniquePropertyKeys } from '../../utils/propertyOptions';
 
+interface NodeFormData {
+  title: string;
+  field: string;
+  properties: Record<string, string>;
+  note: string;
+  url: string;
+}
+
 interface NodePropertiesModalProps {
   existingNodes: NodeData[];
   onClose: () => void;
-  onSave: (data: { title: string; field: string; properties: Record<string, string>; note: string; }) => void;
+  onSave: (data: NodeFormData) => void;
 }
 
 export default function NodePropertiesModal({ existingNodes, onClose, onSave }: NodePropertiesModalProps) {
-  const [title, setTitle] = useState('');
-  const [field, setField] = useState('');
-  const [note, setNote] = useState('');
-  const [properties, setProperties] = useState<Record<string, string>>({});
+  const [formData, setFormData] = useState<NodeFormData>({
+    title: '',
+    field: '',
+    properties: {},
+    note: '',
+    url: ''
+  });
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
   const [isNewProperty, setIsNewProperty] = useState(false);
@@ -31,15 +42,21 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
       return;
     }
     
-    setProperties(prev => ({ ...prev, [newKey]: newValue }));
+    setFormData(prev => ({
+      ...prev,
+      properties: { ...prev.properties, [newKey]: newValue }
+    }));
     setNewKey('');
     setNewValue('');
     setIsNewProperty(false);
   };
 
   const removeProperty = (key: string) => {
-    const { [key]: _, ...rest } = properties;
-    setProperties(rest);
+    const { [key]: _, ...rest } = formData.properties;
+    setFormData(prev => ({
+      ...prev,
+      properties: rest
+    }));
   };
 
   return (
@@ -49,16 +66,16 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
         
         <div className="space-y-4">
           <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={formData.title}
+            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
             placeholder="Node Title"
             className="w-full border px-2 py-1 rounded"
           />
 
           <div className="flex gap-2 mb-4">
             <input
-              value={field}
-              onChange={(e) => setField(e.target.value)}
+              value={formData.field}
+              onChange={(e) => setFormData(prev => ({ ...prev, field: e.target.value }))}
               placeholder="Category"
               className="w-full border px-2 py-1 rounded"
               list="field-options"
@@ -69,22 +86,36 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
           </div>
 
           <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
+            value={formData.note}
+            onChange={(e) => setFormData(prev => ({ ...prev, note: e.target.value }))}
             placeholder="Add a note..."
             className="w-full border px-2 py-1 rounded h-24 resize-none"
           />
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700">URL (Optional)</label>
+            <input
+              type="url"
+              value={formData.url}
+              onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="https://example.com"
+            />
+          </div>
+
           <div className="border-t pt-4">
             <h3 className="font-medium mb-2">Custom Properties</h3>
-            {Object.entries(properties).map(([key, value]) => (
+            {Object.entries(formData.properties).map(([key, value]) => (
               <div key={key} className="flex gap-2 mb-2">
                 <input value={key} disabled className="border px-2 py-1 rounded w-1/2" />
                 <input
                   value={value}
-                  onChange={(e) => setProperties(prev => ({
+                  onChange={(e) => setFormData(prev => ({
                     ...prev,
-                    [key]: e.target.value
+                    properties: {
+                      ...prev.properties,
+                      [key]: e.target.value
+                    }
                   }))}
                   className="border px-2 py-1 rounded w-1/2"
                   list={`values-${key}`}
@@ -124,7 +155,7 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
                 >
                   <option value="">Select property</option>
                   {existingPropertyKeys
-                    .filter(key => !Object.keys(properties).includes(key))
+                    .filter(key => !Object.keys(formData.properties).includes(key))
                     .map(key => (
                       <option key={key} value={key}>{key}</option>
                     ))}
@@ -164,11 +195,11 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
           </button>
           <button
             onClick={() => {
-              if (title && field) {
-                onSave({ title, field, properties, note });
+              if (formData.title && formData.field) {
+                onSave(formData);
               }
             }}
-            disabled={!title || !field}
+            disabled={!formData.title || !formData.field}
             className="bg-blue-500 text-white px-4 py-1 rounded disabled:opacity-50"
           >
             Create Node

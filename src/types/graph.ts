@@ -4,6 +4,7 @@ export interface NodeData {
   field: string;
   note?: string;
   properties: Record<string, string>;
+  url?: string;  // Optional URL for node linking
   // A node can connect to multiple edges
   // This is handled implicitly through the links array in GraphData
 }

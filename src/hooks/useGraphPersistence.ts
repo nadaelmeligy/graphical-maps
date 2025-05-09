@@ -6,11 +6,11 @@ export function useGraphPersistence() {
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
 
   // Add a single node
-  function addNode(title: string, field: string, properties: Record<string, string> = {}, note?: string, color?: string) {
+  function addNode(title: string, field: string, properties: Record<string, string> = {}, note?: string, url?: string, color?: string) {
     const nextId = graphData.nodes.length
       ? Math.max(...graphData.nodes.map(n => n.id)) + 1
       : 0;
-    const node: NodeData = { id: nextId, title, field, note, properties, color };
+    const node: NodeData = { id: nextId, title, field, note, properties, url, color };
     setGraphData(g => ({ nodes: [...g.nodes, node], links: g.links }));
   }
 

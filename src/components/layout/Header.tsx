@@ -8,8 +8,13 @@ import SettingsModal from '../modals/SettingsModal';
 interface HeaderProps {
   onToggleTopBar: () => void;
   isTopBarVisible: boolean;
-  settings: { showLinkCount: boolean };
-  onSettingsChange: (settings: { showLinkCount: boolean }) => void;
+  settings: {
+    showLinkCount: boolean;
+    showCategory: boolean;
+    layout: 'force' | 'radial' | 'hierarchical' | 'circular';
+    topology: 'free' | 'star' | 'ring' | 'grid' | 'tree';
+  };
+  onSettingsChange: (settings: typeof HeaderProps['settings']) => void;
 }
 
 const Header: FC<HeaderProps> = ({ onToggleTopBar, isTopBarVisible, settings, onSettingsChange }) => {
