@@ -23,6 +23,7 @@ function processNode(rawNode: any): NodeData {
     properties: processProperties(rawNode.properties),
     note: rawNode.note || '',
     url: rawNode.url || '',  // Preserve or initialize URL
+    equation: rawNode.equation || '',
     // Preserve any existing x,y,z positions if they exist
     ...(rawNode.x !== undefined ? { x: rawNode.x } : {}),
     ...(rawNode.y !== undefined ? { y: rawNode.y } : {}),
@@ -60,16 +61,12 @@ function processLinks(rawLinks: any[], nodes: NodeData[]): any[] {
       const sourceId = Number(typeof link.source === 'object' ? link.source.id : link.source);
       const targetId = Number(typeof link.target === 'object' ? link.target.id : link.target);
       
-      // Generate or preserve curvature
-      const linkKey = `${Math.min(sourceId, targetId)}-${Math.max(sourceId, targetId)}`;
-      const count = linkCounts.get(linkKey) || 0;
-      linkCounts.set(linkKey, count + 1);
-      
       return {
         id: link.id || `link-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         source: sourceId,
         target: targetId,
-        curvature: link.curvature || (count * 0.2)
+        type: link.type || 'line', // Preserve edge type or default to line
+        value: link.value || 1
       };
     });
 }

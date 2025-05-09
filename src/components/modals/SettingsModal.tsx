@@ -10,6 +10,7 @@ interface SettingsModalProps {
     chargeStrength: number;
     topology: Topology;
     showArrows: boolean;
+    defaultEdgeType: EdgeType;
   };
   onSettingsChange: (settings: {
     showLinkCount: boolean;
@@ -19,6 +20,7 @@ interface SettingsModalProps {
     chargeStrength: number;
     topology: Topology;
     showArrows: boolean;
+    defaultEdgeType: EdgeType;
   }) => void;
 }
 
@@ -63,7 +65,9 @@ export default function SettingsModal({ onClose, settings, onSettingsChange }: S
                 ...settings,
                 layout: e.target.value as typeof settings.layout
               })}
-              className="w-full border rounded px-2 py-1"
+              className="w-full border-2 border-indigo-500 rounded-md px-3 py-2 bg-white
+                         text-gray-700 font-medium shadow-sm hover:border-indigo-600 
+                         focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="force">Force-Directed</option>
               <option value="radial">Radial</option>
@@ -129,6 +133,26 @@ export default function SettingsModal({ onClose, settings, onSettingsChange }: S
             <p className="text-sm text-blue-600 font-medium mt-1">
               Choose a specific network topology to organize nodes
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-gray-700 block font-medium">Default Edge Type</label>
+            <select
+              value={settings.defaultEdgeType}
+              onChange={(e) => onSettingsChange({
+                ...settings,
+                defaultEdgeType: e.target.value as EdgeType
+              })}
+              className="w-full border-2 border-indigo-500 rounded-md px-3 py-2 bg-white
+                         text-gray-700 font-medium shadow-sm hover:border-indigo-600 
+                         focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="line">Simple Line</option>
+              <option value="arrow">Directional Arrow</option>
+              <option value="dashed">Dashed Line</option>
+              <option value="dotted">Dotted Line</option>
+              <option value="bidirectional">Bidirectional Arrow</option>
+            </select>
           </div>
 
           <div className="flex items-center justify-between">

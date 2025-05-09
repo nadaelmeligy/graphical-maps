@@ -1,6 +1,6 @@
 'use client';
 import { FC, useState, useMemo } from 'react';
-import type { NodeData } from '../types/graph';
+import type { NodeData, NodeLabelType } from '../types/graph';
 import SearchBar from './toolbar/SearchBar';
 
 interface TopBarProps {
@@ -13,6 +13,8 @@ interface TopBarProps {
   isVisible: boolean;
   onExportImage: () => void;
   onSearchSelect: (nodeId: number) => void;
+  labelType: NodeLabelType;
+  onLabelTypeChange: (type: NodeLabelType) => void;
 }
 
 const TopBar: FC<TopBarProps> = ({ 
@@ -24,7 +26,9 @@ const TopBar: FC<TopBarProps> = ({
   colorProperty,
   isVisible,
   onExportImage,
-  onSearchSelect
+  onSearchSelect,
+  labelType,
+  onLabelTypeChange
 }) => {
   const [selectedField, setSelectedField] = useState<string>('');
   const [selectedValue, setSelectedValue] = useState<string>('');
@@ -74,6 +78,26 @@ const TopBar: FC<TopBarProps> = ({
             className="hidden"
           />
         </label>
+        {/* Add label selector here */}
+        <select 
+          className="px-3 py-1 text-sm bg-purple-500 text-white rounded hover:bg-purple-600 transition cursor-pointer"
+          value={labelType}
+          onChange={(e) => onLabelTypeChange(e.target.value as NodeLabelType)}
+        >
+          <option value="none">Hide Labels</option>
+          <option value="title">Node Titles</option>
+          <option value="category">Categories</option>
+          <option value="equation">Equations</option>
+          <option value="note">Notes</option>
+          <option value="url">URLs</option>
+          {fields
+            .filter(field => field !== 'field')
+            .map(field => (
+              <option key={field} value={field}>
+                {field}
+              </option>
+          ))}
+        </select>
       </div>
 
       <div className="flex items-center gap-2">

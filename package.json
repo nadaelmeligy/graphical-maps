@@ -10,8 +10,12 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "@types/d3": "^7.4.3",
+    "@types/katex": "^0.16.7",
+    "d3": "^7.9.0",
     "file-saver": "^2.0.5",
     "html2canvas": "^1.4.1",
+    "katex": "^0.16.22",
     "next": "15.3.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

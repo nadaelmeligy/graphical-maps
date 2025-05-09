@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import type { NodeData } from '../../types/graph';
 import { getUniqueValues, getUniquePropertyKeys } from '../../utils/propertyOptions';
 
@@ -9,6 +9,7 @@ interface NodeFormData {
   properties: Record<string, string>;
   note: string;
   url: string;
+  equation?: string;
 }
 
 interface NodePropertiesModalProps {
@@ -23,11 +24,13 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
     field: '',
     properties: {},
     note: '',
-    url: ''
+    url: '',
+    equation: ''
   });
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
   const [isNewProperty, setIsNewProperty] = useState(false);
+  const equationPreviewRef = useRef<HTMLDivElement>(null);
 
   // Get unique values for fields and properties
   const uniqueFields = useMemo(() => getUniqueValues(existingNodes, 'field'), [existingNodes]);
@@ -41,7 +44,6 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
       alert('Please enter both property name and value');
       return;
     }
-    
     setFormData(prev => ({
       ...prev,
       properties: { ...prev.properties, [newKey]: newValue }
@@ -59,11 +61,27 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
     }));
   };
 
+  useEffect(() => {
+    const renderPreview = async () => {
+      if (equationPreviewRef.current && formData.equation) {
+        try {
+          const katex = (await import('katex')).default;
+          katex.render(formData.equation, equationPreviewRef.current, {
+            throwOnError: false,
+            displayMode: true
+          });
+        } catch (error) {
+          equationPreviewRef.current.innerHTML = '<span style="color: red">Invalid LaTeX</span>';
+        }
+      }
+    };
+    renderPreview();
+  }, [formData.equation]);
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
       <div className="bg-white p-6 rounded-lg w-96">
         <h2 className="text-xl mb-4">Add New Node</h2>
-        
         <div className="space-y-4">
           <input
             value={formData.title}
@@ -71,7 +89,6 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
             placeholder="Node Title"
             className="w-full border px-2 py-1 rounded"
           />
-
           <div className="flex gap-2 mb-4">
             <input
               value={formData.field}
@@ -101,6 +118,24 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               placeholder="https://example.com"
             />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700">Equation (LaTeX)</label>
+            <div className="mt-1">
+              <textarea
+                value={formData.equation}
+                onChange={(e) => setFormData(prev => ({ ...prev, equation: e.target.value }))}
+                placeholder="\sum_{i=1}^n x_i"
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                rows={3}
+              />
+              {formData.equation && (
+                <div className="mt-2 border rounded p-2 bg-gray-50">
+                  <div ref={equationPreviewRef} className="overflow-x-auto" />
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="border-t pt-4">
@@ -162,7 +197,6 @@ export default function NodePropertiesModal({ existingNodes, onClose, onSave }: 
                   <option value="__new__">Add new property...</option>
                 </select>
               )}
-
               <input
                 value={newValue}
                 onChange={(e) => setNewValue(e.target.value)}

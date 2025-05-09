@@ -10,6 +10,8 @@ import NotePopup from './graph/NotePopup';
 import ColorLegend from './graph/ColorLegend';
 import { schemeCategory10 } from 'd3-scale-chromatic';
 import CameraControls from './graph/CameraControls';
+import EquationLabel from './graph/EquationLabel';
+import SpriteText from 'three-spritetext';
 
 const ForceGraph3D = dynamic(() => import('react-force-graph-3d'), { ssr: false });
 
@@ -26,7 +28,7 @@ interface GraphVisualizationProps {
   onGraphRefUpdate: (ref: { current: any; isReady: boolean } | null) => void;
   showLinkCount: boolean;
   showCategory: boolean;
-  showArrows: boolean;
+  labelType: NodeLabelType;
 }
 
 export default function GraphVisualization({ 
@@ -39,7 +41,7 @@ export default function GraphVisualization({
   onGraphRefUpdate,
   showLinkCount,
   showCategory,
-  showArrows
+  labelType
 }: GraphVisualizationProps) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -104,7 +106,6 @@ export default function GraphVisualization({
   }, [graphData.links]);
 
   const handleNodeClick = (node: NodeData, event: MouseEvent) => {
-    // Handle edge creation first
     if (edgeCreationSource !== null) {
       if (edgeCreationSource !== node.id) {
         addLink(edgeCreationSource, node.id);
@@ -113,22 +114,19 @@ export default function GraphVisualization({
       return;
     }
 
-    // Handle right click for context menu
-    if (event.button === 2 || event.ctrlKey) {
-      event.preventDefault();
-      setContextMenu({
-        x: event.clientX,
-        y: event.clientY,
-        type: 'node',
-        nodeId: node.id
-      });
+    // Check for URL and open in new tab if available
+    if (node.url) {
+      window.open(node.url, '_blank');
       return;
     }
 
-    // Handle left click for URL
-    if (node.url) {
-      window.open(node.url, '_blank');
-    }
+    // Show context menu if no URL
+    setContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      type: 'node',
+      nodeId: node.id
+    });
   };
 
   const startEdgeCreation = (nodeId: number) => {
@@ -167,10 +165,49 @@ export default function GraphVisualization({
     }
   }, [graphData.nodes.length]);
 
+  const updateNodeLabels = useCallback(() => {
+    if (!graphRef.current || !graphData.nodes) return;
+
+    graphData.nodes.forEach(node => {
+      if (!node.labelConfig) {
+        node.labelConfig = { type: labelType };
+      }
+      node.labelConfig.type = labelType;
+    });
+
+    // Force a re-render
+    graphRef.current.refresh();
+  }, [labelType, graphData.nodes]);
+
+  useEffect(() => {
+    updateNodeLabels();
+  }, [labelType, updateNodeLabels]);
+
+  const getNodeLabel = (node: NodeData) => {
+    const labelType = node.labelConfig?.type || 'none';
+    
+    switch (labelType) {
+      case 'none':
+        return '';
+      case 'title':
+        return node.title;
+      case 'category':
+        return node.field;
+      case 'equation':
+        if (!node.equation) return '';
+        return node.equation;
+      case 'note':
+        return node.note || '';
+      case 'url':
+        return node.url || '';
+      default:
+        // Handle custom properties
+        return node.properties[labelType] || '';
+    }
+  };
+
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}
-         onContextMenu={(e) => e.preventDefault()} // Prevent default context menu
-    >
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <button
         onClick={resetCamera}
         className="absolute top-4 right-4 z-10 px-1.5 py-1 bg-gray-800 text-white rounded-md 
@@ -179,7 +216,7 @@ export default function GraphVisualization({
         Reset View
       </button>
 
-      <CameraControls graphRef={graphRef} visible={showArrows} />
+      <CameraControls graphRef={graphRef} />
 
       <ForceGraph3D
         ref={graphRef}
@@ -211,18 +248,20 @@ export default function GraphVisualization({
         linkCurvature={0} // Disable curvature temporarily to debug
         linkResolution={20}
         nodeVal={(node: any) => (node.__edgeCount || 1) * 2} // Size based on edge count
-        nodeLabel={(n: NodeData) => 
-          `<div style="font-size: 16px">
-            ${n.title}
-            ${showCategory ? ` — ${n.field}` : ''}
-            ${showLinkCount ? `<br/>Connections: ${n.__edgeCount || 0}` : ''}
-            ${n.url ? '<br/>🔗 Click to open link' : ''}
-          </div>`
-        }
-        onNodeClick={handleNodeClick}
-        onNodeRightClick={(node, event) => {
-          handleNodeClick(node as NodeData, event as MouseEvent);
+        nodeLabel={getNodeLabel}
+        nodeThreeObject={node => {
+          const label = getNodeLabel(node);
+          if (!label) return null;
+
+          const sprite = new SpriteText(label);
+          sprite.color = '#000000';
+          sprite.textHeight = 8;
+          sprite.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+          sprite.padding = 2;
+          sprite.borderRadius = 3;
+          return sprite;
         }}
+        onNodeClick={handleNodeClick}
         onNodeHover={(node, event) => {
           // Only handle hover if we have a node
           if (!node) {
@@ -286,6 +325,18 @@ export default function GraphVisualization({
           x={hoveredNode.x}
           y={hoveredNode.y}
         />
+      )}
+
+      {/* Only show equation labels if not already showing as node labels */}
+      {labelType !== 'equation' && graphData.nodes.map(node => 
+        node.equation ? (
+          <EquationLabel
+            key={`eq-${node.id}`}
+            equation={node.equation}
+            position={{ x: node.x || 0, y: node.y || 0, z: node.z || 0 }}
+            graphRef={graphRef}
+          />
+        ) : null
       )}
 
       {contextMenu && (

@@ -15,13 +15,14 @@ export function useGraphPersistence() {
   }
 
   // Add a link between nodes
-  function addLink(sourceId: number, targetId: number) {
+  function addLink(sourceId: number, targetId: number, edgeType?: EdgeType) {
     if (sourceId === targetId) return; // Prevent self-loops
     
     const newLink = {
       id: `link-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       source: sourceId,
       target: targetId,
+      type: edgeType || 'line',
       value: 1  // Add a value property
     };
     
@@ -29,10 +30,6 @@ export function useGraphPersistence() {
       nodes: g.nodes,
       links: [...g.links, newLink]
     }));
-
-    // Debug log
-    console.log('Added new link:', newLink);
-    console.log('Total links:', graphData.links.length + 1);
   }
 
   // Update a node

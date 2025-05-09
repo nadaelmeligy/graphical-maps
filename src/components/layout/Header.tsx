@@ -4,6 +4,7 @@ import { FC, useState } from 'react';
 import Image from 'next/image';
 import AboutModal from '../modals/AboutModal';
 import SettingsModal from '../modals/SettingsModal';
+import DocumentationModal from '../docs/DocumentationModal';
 
 interface HeaderProps {
   onToggleTopBar: () => void;
@@ -20,6 +21,7 @@ interface HeaderProps {
 const Header: FC<HeaderProps> = ({ onToggleTopBar, isTopBarVisible, settings, onSettingsChange }) => {
   const [showAbout, setShowAbout] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showDocs, setShowDocs] = useState(false);
 
   return (
     <header className="bg-gray-800 text-white p-4 shadow-md flex items-center justify-between">
@@ -42,7 +44,12 @@ const Header: FC<HeaderProps> = ({ onToggleTopBar, isTopBarVisible, settings, on
           {isTopBarVisible ? 'Hide Tools' : 'Show Tools'}
         </button>
         <a href="#" className="text-gray-300 hover:text-white transition">Home</a>
-        <a href="#" className="text-gray-300 hover:text-white transition">Docs</a>
+        <button
+          onClick={() => setShowDocs(true)}
+          className="text-gray-300 hover:text-white transition"
+        >
+          Docs
+        </button>
         <button
           onClick={() => setShowAbout(true)}
           className="text-gray-300 hover:text-white transition"
@@ -56,6 +63,7 @@ const Header: FC<HeaderProps> = ({ onToggleTopBar, isTopBarVisible, settings, on
           Settings
         </button>
       </nav>
+      {showDocs && <DocumentationModal onClose={() => setShowDocs(false)} />}
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
       {showSettings && (
         <SettingsModal

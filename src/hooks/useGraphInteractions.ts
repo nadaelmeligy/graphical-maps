@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
+import * as d3 from 'd3';
 import type { NodeData } from '../types/graph';
 
 export function useGraphInteractions(
   addLink: (source: number, target: number) => void,
-  layout: string,
-  linkDistance: number,
-  chargeStrength: number
+  layout?: string,
+  linkDistance: number = 100,
+  chargeStrength: number = -50
 ) {
   const [dragLine, setDragLine] = useState<{ source: number; x: number; y: number; z: number } | null>(null);
   const [isSimulationRunning, setSimulationRunning] = useState(true);
@@ -50,33 +51,63 @@ export function useGraphInteractions(
     setDragLine(null);
   };
 
-  const configureD3Force = (d3: any) => {
+  const configureD3Force = (d3Sim: any) => {
+    if (!d3Sim) return;
+
+    // Create forces first
+    const linkForce = d3.forceLink().id((d: any) => d.id).distance(linkDistance);
+    const chargeForce = d3.forceManyBody().strength(chargeStrength);
+    const centerForce = d3.forceCenter();
+
+    // Assign forces with proper strength values
+    d3Sim
+      .force('link', linkForce)
+      .force('charge', chargeForce)
+      .force('center', centerForce);
+
     switch (layout) {
       case 'radial':
-        d3.force('charge')?.strength(chargeStrength);
-        d3.force('link')?.distance(linkDistance);
-        d3.force('radial', d3.forceRadial(200));
+        const radialForce = d3.forceRadial(200);
+        d3Sim
+          .force('radial', radialForce.strength(0.8))
+          .force('charge', chargeForce.strength(chargeStrength * 0.7))
+          .force('center', centerForce.strength(1));
         break;
-        
+      
       case 'hierarchical':
-        d3.force('charge')?.strength(chargeStrength);
-        d3.force('link')?.distance(linkDistance);
-        d3.force('y', d3.forceY().strength(0.1));
+        d3Sim
+          .force('charge', chargeForce.strength(chargeStrength * 1.5))
+          .force('y', d3.forceY().strength(0.3))
+          .force('x', d3.forceX().strength(0.1))
+          .force('center', centerForce.strength(0.5));
         break;
-        
+
       case 'circular':
-        d3.force('charge')?.strength(chargeStrength * 0.5);
-        d3.force('link')?.distance(linkDistance * 0.8);
-        d3.force('center', d3.forceCenter(0, 0).strength(1));
+        const circularForce = d3.forceRadial(200);
+        d3Sim
+          .force('radial', circularForce.strength(1))
+          .force('charge', chargeForce.strength(chargeStrength * 0.5))
+          .force('center', centerForce.strength(1));
         break;
-        
+
       default: // force-directed
-        d3.force('charge')?.strength(chargeStrength);
-        d3.force('link')?.distance(linkDistance);
-        d3.force('center')?.strength(0.05);
-        d3.force('collision')?.radius(20);
+        d3Sim
+          .force('charge', chargeForce.strength(chargeStrength))
+          .force('center', centerForce.strength(0.1))
+          .force('collision', d3.forceCollide(30));
+        break;
     }
+
+    // Reheat simulation
+    d3Sim.alpha(1).restart();
   };
+
+  // Apply configuration when layout changes
+  useEffect(() => {
+    if (graphRef.current) {
+      configureD3Force(graphRef.current.d3Force());
+    }
+  }, [layout, linkDistance, chargeStrength]);
 
   const handleEngineStop = () => {
     if (graphRef.current) {

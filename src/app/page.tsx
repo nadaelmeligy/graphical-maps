@@ -28,8 +28,14 @@ export default function Page() {
     linkDistance: 100,
     chargeStrength: -50,
     topology: 'free' as Topology,
-    showArrows: true
+    showArrows: true,
+    defaultEdgeType: 'line' as EdgeType
   });
+  const [labelType, setLabelType] = useState<NodeLabelType>('title');
+
+  const handleAddLink = (source: number, target: number) => {
+    addLink(source, target, settings.defaultEdgeType);
+  };
 
   // Apply topology when it changes
   useEffect(() => {
@@ -43,6 +49,18 @@ export default function Page() {
       graphRef.current.d3ReheatSimulation();
     }
   }, [settings.topology, graphData.nodes, graphRef]);
+
+  useEffect(() => {
+    if (graphRef?.current) {
+      graphRef.current.d3ReheatSimulation();
+      // Give time for the new forces to take effect
+      setTimeout(() => {
+        if (graphRef.current) {
+          graphRef.current.d3Force('center').strength(0.05);
+        }
+      }, 2000);
+    }
+  }, [settings.layout, settings.linkDistance, settings.chargeStrength]);
 
   const handleExportImage = async () => {
     if (!graphRef?.current || !graphRef.isReady) {
@@ -145,6 +163,8 @@ export default function Page() {
             onColorPropertyChange={setColorProperty}
             onExportImage={handleExportImage}
             onSearchSelect={handleSearchSelect}
+            labelType={labelType}
+            onLabelTypeChange={setLabelType}
           />
         </div>
 
@@ -153,14 +173,19 @@ export default function Page() {
           <GraphVisualization
             graphData={processedData}
             addNode={(title, field, properties, note) => addNode(title, field, properties, note)}
-            addLink={addLink}
+            addLink={handleAddLink}
             updateNode={updateNode}
             removeNode={removeNode}
             colorProperty={colorProperty}
             onGraphRefUpdate={setGraphRef}
             showLinkCount={settings.showLinkCount}
-            topology={settings.topology}
+            showCategory={settings.showCategory}
             showArrows={settings.showArrows}
+            defaultEdgeType={settings.defaultEdgeType}
+            layout={settings.layout}
+            linkDistance={settings.linkDistance}
+            chargeStrength={settings.chargeStrength}
+            labelType={labelType}
           />
         </main>
       </div>

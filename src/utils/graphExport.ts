@@ -45,6 +45,19 @@ export const createGraphPreview = (graphRef: any, includeLabels: boolean = false
         graphData.nodes.forEach((node: any) => {
           if (!node) return;
 
+          // Get label based on the node data
+          let text = '';
+          if (node.labelConfig?.type === 'title') text = node.title;
+          else if (node.labelConfig?.type === 'category') text = node.field;
+          else if (node.labelConfig?.type === 'note') text = node.note || '';
+          else if (node.labelConfig?.type === 'equation') text = node.equation || '';
+          else if (node.labelConfig?.type === 'url') text = node.url || '';
+          else if (node.labelConfig?.type && node.properties[node.labelConfig.type]) {
+            text = node.properties[node.labelConfig.type];
+          }
+
+          if (!text) return;
+
           // Get position from node data
           const pos = {
             x: node.x || 0,
@@ -61,7 +74,6 @@ export const createGraphPreview = (graphRef: any, includeLabels: boolean = false
           const x = ((vector.x + 1) / 2) * canvas.width;
           const y = ((-vector.y + 1) / 2) * canvas.height;
 
-          const text = node.title || node.id.toString();
           const metrics = ctx.measureText(text);
           const padding = 8;
           const height = 24;
