@@ -26,7 +26,7 @@ interface SettingsModalProps {
 }
 
 export default function SettingsModal({ onClose, settings, onSettingsChange }: SettingsModalProps) {
-  const { position, dragHandlers } = useDraggable();
+  const { position, dragHandlers } = useDraggable('drag-handle');
 
   const handleSettingChange = <K extends keyof typeof settings>(key: K, value: typeof settings[K]) => {
     onSettingsChange({ ...settings, [key]: value });
@@ -51,20 +51,19 @@ export default function SettingsModal({ onClose, settings, onSettingsChange }: S
   );
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 flex items-center justify-center z-50">
       <div 
         className="bg-white rounded-lg w-[600px] max-h-[80vh] overflow-y-auto shadow-xl"
         style={{ 
           transform: `translate(${position.x}px, ${position.y}px)`,
-          cursor: 'move'
         }}
         {...dragHandlers}
       >
         <div 
-          className="p-4 bg-gray-100 rounded-t-lg border-b cursor-move flex justify-between items-center"
-          onMouseDown={dragHandlers.onMouseDown}
+          className="p-4 bg-gray-100 rounded-t-lg border-b flex justify-between items-center drag-handle"
+          style={{ cursor: 'move' }}
         >
-          <h2 className="text-xl font-bold text-gray-900 select-none">Graph Settings</h2>
+          <h2 className="text-xl font-bold text-gray-900 select-none drag-handle">Graph Settings</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
@@ -73,7 +72,7 @@ export default function SettingsModal({ onClose, settings, onSettingsChange }: S
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-6" style={{ cursor: 'default' }}>
           <div className="space-y-6">
             <SettingSection 
               title="Layout Settings" 
